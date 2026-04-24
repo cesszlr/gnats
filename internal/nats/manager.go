@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 	"sync"
 
 	"github.com/nats-io/nats.go"
@@ -113,6 +114,10 @@ func (m *Manager) Connect(cfg ConnectionConfig) (*Client, error) {
 	}
 
 	// TLS Setup
+	useTLS := cfg.Insecure || cfg.CAContent != "" || cfg.CAFile != "" ||
+		cfg.CertContent != "" || cfg.CertFile != "" ||
+		strings.HasPrefix(cfg.URL, "tls://")
+
 	tlsConfig := &tls.Config{
 		InsecureSkipVerify: cfg.Insecure,
 	}
@@ -157,8 +162,9 @@ func (m *Manager) Connect(cfg ConnectionConfig) (*Client, error) {
 		}
 	}
 
-	// Always apply Secure if any TLS option is used or insecure is toggled
-	opts = append(opts, nats.Secure(tlsConfig))
+	if useTLS {
+		opts = append(opts, nats.Secure(tlsConfig))
+	}
 
 	nc, err := nats.Connect(cfg.URL, opts...)
 	if err != nil {

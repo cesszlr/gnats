@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useConnection } from '../contexts/ConnectionContext';
-import { Plus, Trash2, Eye, Eraser, X, List, Box, Search } from 'lucide-react';
+import { Plus, Trash2, Eye, Eraser, X, List, Box, Search, BarChart2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
 interface StreamInfo {
   config: {
@@ -194,6 +195,11 @@ const JetStream: React.FC = () => {
     s.config.subjects.some(sub => sub.toLowerCase().includes(search.toLowerCase()))
   );
 
+  const chartData = streams.map(s => ({
+    name: s.config.name,
+    messages: s.state.messages
+  })).sort((a, b) => b.messages - a.messages).slice(0, 10);
+
   if (!activeConnection) return <div>{t('select_connection')}</div>;
 
   return (
@@ -215,6 +221,36 @@ const JetStream: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {streams.length > 0 && !showAdd && !viewingStream && (
+        <div className="card animate-fade-in" style={{ marginBottom: '2rem', padding: '1.25rem', flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', color: 'var(--text-secondary)', fontSize: '0.875rem', fontWeight: 600 }}>
+            <BarChart2 size={18} /> {t('messages')} (Top 10 Streams)
+          </div>
+          <div style={{ width: '100%', height: '120px' }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={chartData}>
+                <XAxis dataKey="name" hide />
+                <Tooltip 
+                  cursor={{ fill: 'rgba(0,0,0,0.02)' }}
+                  contentStyle={{ 
+                    backgroundColor: 'var(--card-bg)', 
+                    borderColor: 'var(--border-color)',
+                    borderRadius: 'var(--radius)',
+                    fontSize: '11px',
+                    boxShadow: 'var(--shadow)'
+                  }}
+                />
+                <Bar dataKey="messages" radius={[4, 4, 0, 0]}>
+                  {chartData.map((_, index) => (
+                    <Cell key={`cell-${index}`} fill={index === 0 ? 'var(--accent-color)' : 'var(--text-secondary)'} opacity={0.6} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
 
       <div className="scroll-area" style={{ flex: 1, paddingRight: '0.5rem' }}>
         {showAdd && (
