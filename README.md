@@ -15,11 +15,15 @@ GNATS is a modern, lightweight, and powerful open-source management interface de
 - 🔌 **Multi-Connection Management**: 
     - **Persistence**: Connection configurations are automatically saved to a local file.
     - **Quick Reconnect**: Easily switch between saved configurations.
-- 📊 **Real-time Dashboard**: Quickly view server status, RTT latency, and JetStream statistics.
+    - **Advanced TLS**: Support for both file paths and direct PEM content pasting.
+- 📊 **Real-time Dashboard**: 
+    - **Live Monitoring**: Real-time request rate charts.
+    - **Statistics**: Server status, RTT latency, and JetStream metrics.
 - 🚀 **Core Messaging (Pub/Sub)**: 
     - Subscribe to subjects in real-time and view incoming messages.
     - Publish messages with custom Payloads, Headers, and Reply-To addresses.
 - 🌊 **JetStream Management**:
+    - **Visual Distribution**: Charts showing message volume across top streams.
     - Create, view, purge, and delete Streams.
     - View message content in Streams in real-time (supports JSON/YAML formatting).
     - Monitor Consumer status and progress.
@@ -64,20 +68,53 @@ GNATS can be configured using environment variables:
 
 ---
 
+## 🗺️ Roadmap
+
+### 3. Developer Experience (DX)
+- **Message Snippets**: Save and reuse common message templates.
+- **Schema Validation**: Integrate JSON Schema validation for message payloads.
+- **Message Replay**: One-click replay of historical messages from Streams.
+
+### 4. Advanced Management
+- **Dynamic Stream Editing**: Update Stream configurations without deletion (e.g., adding subjects).
+- **Bulk Operations**: Batch purge streams or delete keys in KV stores.
+- **Export/Import**: Backup and migrate connection configurations easily.
+
+### 5. Polish & Interaction
+- **Keyboard Shortcuts**: `Ctrl+Enter` to publish, `/` to focus search.
+- **Enhanced Search**: Full-text search within Stream message history.
+
+---
+
 ## 🚀 Quick Start
 
 ### Using Docker (Recommended)
 
-The fastest way to get started. You can pull the pre-built image directly from Docker Hub:
+The fastest way to get started. The image is extremely small as it only contains the single binary.
 
-```bash
-docker pull cesszlr/gnats:latest
-docker run -d -p 8080:8080 -v $(pwd)/data:/app/data -e CONNECTIONS_FILE=/app/data/connections.json --name gnats-app cesszlr/gnats:latest
-```
+1. **Pull Image**:
+   ```bash
+   docker pull cesszlr/gnats:latest
+   ```
+
+2. **Run Container**:
+   ```bash
+   docker run -d -p 8080:8080 -v $(pwd)/data:/app/data -e CONNECTIONS_FILE=/app/data/connections.json --name gnats-app cesszlr/gnats:latest
+   ```
+
+3. **Access**: Open your browser and visit `http://localhost:8080`
 
 ### Build from source using Docker
 
-3. **Access**: Open your browser and visit `http://localhost:8080`
+1. **Build Image**:
+   ```bash
+   docker build -t gnats-gui .
+   ```
+
+2. **Run Container**:
+   ```bash
+   docker run -d -p 8080:8080 -v $(pwd)/data:/app/data -e CONNECTIONS_FILE=/app/data/connections.json --name gnats-app gnats-gui
+   ```
 
 ---
 
@@ -85,7 +122,7 @@ docker run -d -p 8080:8080 -v $(pwd)/data:/app/data -e CONNECTIONS_FILE=/app/dat
 
 - **Backend**: [Go](https://golang.org/) + [chi](https://github.com/go-chi/chi) (High-performance routing) + [nats.go](https://github.com/nats-io/nats.go)
 - **Frontend**: [React](https://react.dev/) + [TypeScript](https://www.typescriptlang.org/) + [Vite](https://vitejs.dev/)
-- **UI Components**: [Lucide Icons](https://lucide.dev/) + Native CSS Variables (Modern Theme)
+- **UI Components**: [Lucide Icons](https://lucide.dev/) + [Recharts](https://recharts.org/) + Native CSS Variables
 - **i18n**: [i18next](https://www.i18next.com/)
 - **Deployment**: `go:embed` + Docker Multi-stage Build
 
