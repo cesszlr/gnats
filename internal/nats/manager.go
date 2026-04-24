@@ -2,12 +2,21 @@ package nats
 
 import (
 	"crypto/tls"
+	"encoding/json"
 	"fmt"
+	"os"
 	"sync"
 
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/jetstream"
 )
+
+func getConfigPath() string {
+	if path := os.Getenv("CONNECTIONS_FILE"); path != "" {
+		return path
+	}
+	return "connections.json"
+}
 
 // ConnectionConfig represents a NATS connection configuration
 type ConnectionConfig struct {
@@ -36,25 +45,55 @@ type Client struct {
 	JS     jetstream.JetStream
 }
 
-// Manager manages multiple NATS connections
+// Manager manages multiple NATS connections with persistence
 type Manager struct {
+	configs map[string]ConnectionConfig
 	clients map[string]*Client
 	mu      sync.RWMutex
 }
 
 func NewManager() *Manager {
-	return &Manager{
+	m := &Manager{
+		configs: make(map[string]ConnectionConfig),
 		clients: make(map[string]*Client),
 	}
+	m.loadConfigs()
+	return m
+}
+
+func (m *Manager) loadConfigs() {
+	data, err := os.ReadFile(getConfigPath())
+	if err != nil {
+		return
+	}
+	var configs []ConnectionConfig
+	if err := json.Unmarshal(data, &configs); err == nil {
+		for _, cfg := range configs {
+			cfg.Status = "DISCONNECTED"
+			m.configs[cfg.ID] = cfg
+		}
+	}
+}
+
+func (m *Manager) saveConfigs() {
+	var configs []ConnectionConfig
+	for _, cfg := range m.configs {
+		// Don't save transient status
+		cfg.Status = ""
+		configs = append(configs, cfg)
+	}
+	data, _ := json.MarshalIndent(configs, "", "  ")
+	_ = os.WriteFile(getConfigPath(), data, 0644)
 }
 
 func (m *Manager) Connect(cfg ConnectionConfig) (*Client, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	// If already connected, return the client
+	// If already connected, close it first to refresh settings
 	if client, ok := m.clients[cfg.ID]; ok {
-		return client, nil
+		client.Conn.Close()
+		delete(m.clients, cfg.ID)
 	}
 
 	opts := []nats.Option{
@@ -83,8 +122,6 @@ func (m *Manager) Connect(cfg ConnectionConfig) (*Client, error) {
 	}
 
 	var js jetstream.JetStream
-	// err is already declared above
-
 	if cfg.Domain != "" {
 		js, err = jetstream.NewWithDomain(nc, cfg.Domain)
 	} else {
@@ -102,6 +139,9 @@ func (m *Manager) Connect(cfg ConnectionConfig) (*Client, error) {
 	}
 
 	m.clients[cfg.ID] = client
+	m.configs[cfg.ID] = cfg
+	m.saveConfigs()
+
 	return client, nil
 }
 
@@ -110,35 +150,61 @@ func (m *Manager) Disconnect(id string) error {
 	defer m.mu.Unlock()
 
 	client, ok := m.clients[id]
-	if !ok {
-		return fmt.Errorf("client with ID %s not found", id)
+	if ok {
+		client.Conn.Close()
+		delete(m.clients, id)
+	}
+	return nil
+}
+
+func (m *Manager) DeleteConfig(id string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	// Close client if active
+	if client, ok := m.clients[id]; ok {
+		client.Conn.Close()
+		delete(m.clients, id)
 	}
 
-	client.Conn.Close()
-	delete(m.clients, id)
+	delete(m.configs, id)
+	m.saveConfigs()
+
 	return nil
 }
 
 func (m *Manager) GetClient(id string) (*Client, error) {
 	m.mu.RLock()
-	defer m.mu.RUnlock()
-
-	client, ok := m.clients[id]
-	if !ok {
-		return nil, fmt.Errorf("client with ID %s not found", id)
+	// Check if already active
+	if client, ok := m.clients[id]; ok {
+		m.mu.RUnlock()
+		return client, nil
 	}
-	return client, nil
+
+	// If not active, try to auto-connect using saved config
+	cfg, ok := m.configs[id]
+	m.mu.RUnlock()
+
+	if !ok {
+		return nil, fmt.Errorf("connection with ID %s not found", id)
+	}
+
+	// Re-connect
+	return m.Connect(cfg)
 }
 
 func (m *Manager) ListClients() []ConnectionConfig {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	configs := make([]ConnectionConfig, 0, len(m.clients))
-	for _, client := range m.clients {
-		cfg := client.Config
-		cfg.Status = client.Conn.Status().String()
-		configs = append(configs, cfg)
+	result := make([]ConnectionConfig, 0, len(m.configs))
+	for _, cfg := range m.configs {
+		if client, ok := m.clients[cfg.ID]; ok {
+			cfg.Status = client.Conn.Status().String()
+		} else {
+			cfg.Status = "DISCONNECTED"
+		}
+		result = append(result, cfg)
 	}
-	return configs
+	return result
 }

@@ -87,6 +87,7 @@ body {
   display: flex;
   flex-direction: column;
   z-index: 10;
+  overflow-x: hidden;
 }
 
 .sidebar-logo {
@@ -107,6 +108,7 @@ body {
   gap: 0.5rem;
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .nav-item {
@@ -125,13 +127,17 @@ body {
 .nav-item:hover {
   background-color: rgba(59, 130, 246, 0.08);
   color: var(--accent-color);
-  transform: translateX(4px);
+  padding-left: 1.5rem;
 }
 
 .nav-item.active {
   background-color: var(--accent-color);
   color: white;
   box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.nav-item.active:hover {
+  padding-left: 1.25rem;
 }
 
 .main-content {

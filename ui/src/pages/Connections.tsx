@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useConnection } from '../contexts/ConnectionContext';
 import { apiClient } from '../api/client';
 import type { ConnectionConfig } from '../api/client';
-import { Plus, Power, Search } from 'lucide-react';
+import { Plus, Power, Search, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 const Connections: React.FC = () => {
@@ -55,6 +55,28 @@ const Connections: React.FC = () => {
       await refreshConnections();
     } catch (err) {
       alert(err);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm(t('delete') + '?')) return;
+    try {
+      await apiClient.forget(id);
+      await refreshConnections();
+    } catch (err) {
+      alert(err);
+    }
+  };
+
+  const handleReconnect = async (cfg: ConnectionConfig) => {
+    setLoading(true);
+    try {
+      await apiClient.connect(cfg);
+      await refreshConnections(cfg.id);
+    } catch (err) {
+      alert(err);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -177,8 +199,17 @@ const Connections: React.FC = () => {
               <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>{conn.url}</p>
             </div>
             <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <button className="btn btn-secondary" style={{ color: 'var(--error-color)' }} onClick={() => handleDisconnect(conn.id)}>
-                <Power size={18} />
+              {conn.status === 'CONNECTED' ? (
+                <button className="btn btn-secondary" title={t('disconnect')} onClick={() => handleDisconnect(conn.id)}>
+                  <Power size={18} style={{ color: 'var(--success-color)' }} />
+                </button>
+              ) : (
+                <button className="btn btn-secondary" title={t('connect')} onClick={() => handleReconnect(conn)}>
+                  <Power size={18} style={{ color: 'var(--text-secondary)' }} />
+                </button>
+              )}
+              <button className="btn btn-secondary" title={t('delete')} style={{ color: 'var(--error-color)' }} onClick={() => handleDelete(conn.id)}>
+                <Trash2 size={18} />
               </button>
             </div>
           </div>

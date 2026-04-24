@@ -41,4 +41,11 @@ export const apiClient = {
     });
     if (!res.ok) throw new Error('Failed to disconnect');
   },
+
+  async forget(id: string): Promise<void> {
+    const res = await fetch(`${BASE_URL}/connections/${id}/forget`, {
+      method: 'DELETE',
+    });
+    if (!res.ok) throw new Error('Failed to delete connection');
+  },
 };

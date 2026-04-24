@@ -1,6 +1,8 @@
 package main
 
 import (
+	"embed"
+	"io/fs"
 	"log"
 	"net/http"
 	"os"
@@ -13,6 +15,9 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 )
+
+//go:embed ui/dist/*
+var embeddedFiles embed.FS
 
 func main() {
 	manager := nats.NewManager()
@@ -29,28 +34,59 @@ func main() {
 	r.Get("/ws/{id}/subscribe", ws.Subscribe)
 
 	// Static files serving
-	workDir, _ := os.Getwd()
-	distPath := filepath.Join(workDir, "ui/dist")
+	var staticFS http.FileSystem
 
-	// Create a file server for the dist directory
-	fs := http.FileServer(http.Dir(distPath))
+	// Check if we should use local files (development) or embedded files (production)
+	if os.Getenv("DEBUG") == "true" {
+		log.Println("Development mode: serving static files from ui/dist")
+		workDir, _ := os.Getwd()
+		staticFS = http.Dir(filepath.Join(workDir, "ui/dist"))
+	} else {
+		// Use embedded files
+		sub, err := fs.Sub(embeddedFiles, "ui/dist")
+		if err != nil {
+			log.Fatal(err)
+		}
+		staticFS = http.FS(sub)
+	}
+
+	// Create a file server
+	fileServer := http.FileServer(staticFS)
 
 	// Serve static files and fallback to index.html for React Router
 	r.Get("/*", func(w http.ResponseWriter, r *http.Request) {
 		path := r.URL.Path
 
-		// If the path has a file extension, serve it directly
+		// If the path has a file extension, try to serve the file
 		if strings.Contains(filepath.Base(path), ".") {
-			fs.ServeHTTP(w, r)
-			return
+			// Check if file exists in the file system
+			f, err := staticFS.Open(path)
+			if err == nil {
+				f.Close()
+				fileServer.ServeHTTP(w, r)
+				return
+			}
 		}
 
 		// Otherwise, serve index.html for React Router
-		http.ServeFile(w, r, filepath.Join(distPath, "index.html"))
+		// We need to read index.html from staticFS
+		index, err := staticFS.Open("index.html")
+		if err != nil {
+			http.Error(w, "index.html not found", http.StatusNotFound)
+			return
+		}
+		defer index.Close()
+		stat, _ := index.Stat()
+		http.ServeContent(w, r, "index.html", stat.ModTime(), index)
 	})
 
-	log.Println("Starting server on :8080")
-	if err := http.ListenAndServe(":8080", r); err != nil {
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+
+	log.Printf("Starting server on :%s\n", port)
+	if err := http.ListenAndServe(":"+port, r); err != nil {
 		log.Fatal(err)
 	}
 }

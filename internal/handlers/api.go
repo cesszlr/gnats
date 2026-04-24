@@ -28,6 +28,7 @@ func (a *API) Routes() chi.Router {
 	r.Get("/connections", a.ListConnections)
 	r.Post("/connections", a.Connect)
 	r.Delete("/connections/{id}", a.Disconnect)
+	r.Delete("/connections/{id}/forget", a.DeleteConnection)
 	r.Post("/connections/{id}/publish", a.Publish)
 	r.Get("/connections/{id}/streams", a.ListStreams)
 	r.Post("/connections/{id}/streams", a.CreateStream)
@@ -86,6 +87,15 @@ func (a *API) Connect(w http.ResponseWriter, r *http.Request) {
 func (a *API) Disconnect(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	if err := a.manager.Disconnect(id); err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (a *API) DeleteConnection(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	if err := a.manager.DeleteConfig(id); err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	}
