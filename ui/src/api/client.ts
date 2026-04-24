@@ -12,6 +12,9 @@ export interface ConnectionConfig {
   ca_file?: string;
   cert_file?: string;
   key_file?: string;
+  ca_content?: string;
+  cert_content?: string;
+  key_content?: string;
   domain?: string;
 }
 

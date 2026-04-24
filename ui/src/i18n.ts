@@ -46,7 +46,7 @@ const resources = {
       "discovery": "Services Discovery",
       "version": "Version",
       "stats": "Stats",
-      "info": "Info",
+      "info": "Details",
       "theme": "Theme",
       "light": "Light",
       "dark": "Dark",
@@ -95,7 +95,12 @@ const resources = {
       "key_file": "Key File",
       "insecure": "Insecure",
       "skip_verify": "Skip Verify",
-      "disconnect_confirm": "Are you sure you want to disconnect?"
+      "disconnect_confirm": "Are you sure you want to disconnect?",
+      "tls_mode_path": "File Path",
+      "tls_mode_content": "Paste Content (PEM)",
+      "tls_ca_hint": "Paste the Root CA certificate content (starts with -----BEGIN CERTIFICATE-----)",
+      "tls_cert_hint": "Paste the Client certificate content",
+      "tls_key_hint": "Paste the Private Key content (starts with -----BEGIN PRIVATE KEY-----)"
     }
   },
   zh: {
@@ -130,7 +135,7 @@ const resources = {
       "bucket_name": "Bucket 名称",
       "buckets": "存储桶 (Buckets)",
       "no_buckets": "没有找到 buckets",
-      "select_bucket": "请在左侧选择一个 Bucket 以查看 Key 列表。",
+      "select_bucket": "请在左侧选择一个 Bucket 以查看 Key列表。",
       "keys": "键 (Keys)",
       "no_keys": "该 Bucket 中没有找到任何 Key",
       "put_key": "写入/修改 Key",
@@ -190,7 +195,12 @@ const resources = {
       "key_file": "客户端密钥",
       "insecure": "不安全连接",
       "skip_verify": "跳过证书校验",
-      "disconnect_confirm": "确定要断开此连接吗？"
+      "disconnect_confirm": "确定要断开此连接吗？",
+      "tls_mode_path": "文件路径",
+      "tls_mode_content": "直接粘贴内容 (PEM)",
+      "tls_ca_hint": "请粘贴根证书 (Root CA) 的内容（通常以 -----BEGIN CERTIFICATE----- 开头）",
+      "tls_cert_hint": "请粘贴客户端证书 (Client Cert) 的内容",
+      "tls_key_hint": "请粘贴私钥 (Private Key) 的内容（通常以 -----BEGIN PRIVATE KEY----- 开头）"
     }
   }
 };

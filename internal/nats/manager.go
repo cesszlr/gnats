@@ -2,6 +2,7 @@ package nats
 
 import (
 	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -28,11 +29,16 @@ type ConnectionConfig struct {
 	Password string `json:"password,omitempty"`
 	Status   string `json:"status"`
 
-	// TLS Options
+	// TLS Options (File Paths)
 	Insecure bool   `json:"insecure"`
 	CAFile   string `json:"ca_file,omitempty"`
 	CertFile string `json:"cert_file,omitempty"`
 	KeyFile  string `json:"key_file,omitempty"`
+
+	// TLS Options (PEM Content)
+	CAContent   string `json:"ca_content,omitempty"`
+	CertContent string `json:"cert_content,omitempty"`
+	KeyContent  string `json:"key_content,omitempty"`
 
 	// JetStream Options
 	Domain string `json:"domain,omitempty"`
@@ -106,15 +112,53 @@ func (m *Manager) Connect(cfg ConnectionConfig) (*Client, error) {
 		opts = append(opts, nats.UserInfo(cfg.User, cfg.Password))
 	}
 
-	if cfg.Insecure {
-		opts = append(opts, nats.Secure(&tls.Config{InsecureSkipVerify: true}))
+	// TLS Setup
+	tlsConfig := &tls.Config{
+		InsecureSkipVerify: cfg.Insecure,
 	}
-	if cfg.CAFile != "" {
-		opts = append(opts, nats.RootCAs(cfg.CAFile))
+
+	// Handle CA (File or Content)
+	if cfg.CAContent != "" || cfg.CAFile != "" {
+		pool := x509.NewCertPool()
+		var caBytes []byte
+		var err error
+
+		if cfg.CAContent != "" {
+			caBytes = []byte(cfg.CAContent)
+		} else {
+			caBytes, err = os.ReadFile(cfg.CAFile)
+		}
+
+		if err == nil {
+			if ok := pool.AppendCertsFromPEM(caBytes); ok {
+				tlsConfig.RootCAs = pool
+			}
+		}
 	}
-	if cfg.CertFile != "" && cfg.KeyFile != "" {
-		opts = append(opts, nats.ClientCert(cfg.CertFile, cfg.KeyFile))
+
+	// Handle Client Cert/Key (File or Content)
+	hasCert := cfg.CertContent != "" || cfg.CertFile != ""
+	hasKey := cfg.KeyContent != "" || cfg.KeyFile != ""
+
+	if hasCert && hasKey {
+		var cert tls.Certificate
+		var err error
+
+		if cfg.CertContent != "" && cfg.KeyContent != "" {
+			cert, err = tls.X509KeyPair([]byte(cfg.CertContent), []byte(cfg.KeyContent))
+		} else if cfg.CertFile != "" && cfg.KeyFile != "" {
+			cert, err = tls.LoadX509KeyPair(cfg.CertFile, cfg.KeyFile)
+		}
+
+		if err == nil {
+			tlsConfig.Certificates = []tls.Certificate{cert}
+		} else {
+			return nil, fmt.Errorf("failed to load client certificate: %w", err)
+		}
 	}
+
+	// Always apply Secure if any TLS option is used or insecure is toggled
+	opts = append(opts, nats.Secure(tlsConfig))
 
 	nc, err := nats.Connect(cfg.URL, opts...)
 	if err != nil {
