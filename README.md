@@ -33,6 +33,22 @@ GNATS is a modern, lightweight, and powerful open-source management interface de
 
 ---
 
+## 📸 Screenshots
+
+### Dashboard
+![Dashboard](images/dashborad.png)
+
+### Connection Management
+![Connections](images/connections.png)
+
+### Core Pub/Sub
+![Publish/Subscribe](images/pub.png)
+
+### KV Store
+![KV Store](images/kv.png)
+
+---
+
 ## 🛠 Tech Stack
 
 - **Backend**: [Go](https://golang.org/) + [chi](https://github.com/go-chi/chi) (High-performance routing) + [nats.go](https://github.com/nats-io/nats.go)
