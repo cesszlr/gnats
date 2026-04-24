@@ -1,0 +1,79 @@
+name: Release Binaries
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Release tag name (e.g., v1.0.0)'
+        required: true
+        default: 'v0.1.0'
+
+jobs:
+  build-and-release:
+    name: Build and Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: ui/package-lock.json
+
+      - name: Build Frontend
+        run: |
+          cd ui
+          npm install
+          npm run build
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
+          cache: true
+
+      - name: Build Binaries
+        run: |
+          mkdir -p build
+          
+          # Platforms to build for
+          PLATFORMS=(
+            "linux/amd64"
+            "linux/arm64"
+            "darwin/amd64"
+            "darwin/arm64"
+            "windows/amd64"
+          )
+
+          for platform in "${PLATFORMS[@]}"; do
+            platform_split=(${platform//\// })
+            GOOS=${platform_split[0]}
+            GOARCH=${platform_split[1]}
+            
+            output_name="gnats-$GOOS-$GOARCH"
+            if [ $GOOS = "windows" ]; then
+              output_name+='.exe'
+            fi
+
+            echo "Building for $GOOS/$GOARCH..."
+            GOOS=$GOOS GOARCH=$GOARCH go build -ldflags="-s -w" -o "build/$output_name" main.go
+          done
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.tag_name || github.ref_name }}
+          files: build/*
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
