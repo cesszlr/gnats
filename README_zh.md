@@ -68,17 +68,14 @@ GNATS 支持通过环境变量进行配置：
 
 ### 使用 Docker (推荐)
 
-这是最快的使用方式。由于采用了单文件嵌入，镜像体积极小。
+这是最快的使用方式。您可以直接从 Docker Hub 拉取预构建的镜像：
 
-1. **构建镜像**:
-   ```bash
-   docker build -t gnats-gui .
-   ```
+```bash
+docker pull cesszlr/gnats:latest
+docker run -d -p 8080:8080 -v $(pwd)/data:/app/data -e CONNECTIONS_FILE=/app/data/connections.json --name gnats-app cesszlr/gnats:latest
+```
 
-2. **启动容器**:
-   ```bash
-   docker run -d -p 8080:8080 -v $(pwd)/data:/app/data -e CONNECTIONS_FILE=/app/data/connections.json --name gnats-app gnats-gui
-   ```
+### 使用 Docker 本地构建
 
 3. **访问**: 打开浏览器访问 `http://localhost:8080`
 

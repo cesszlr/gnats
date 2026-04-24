@@ -68,17 +68,14 @@ GNATS can be configured using environment variables:
 
 ### Using Docker (Recommended)
 
-The fastest way to get started. The image is extremely small as it only contains the single binary.
+The fastest way to get started. You can pull the pre-built image directly from Docker Hub:
 
-1. **Build Image**:
-   ```bash
-   docker build -t gnats-gui .
-   ```
+```bash
+docker pull cesszlr/gnats:latest
+docker run -d -p 8080:8080 -v $(pwd)/data:/app/data -e CONNECTIONS_FILE=/app/data/connections.json --name gnats-app cesszlr/gnats:latest
+```
 
-2. **Run Container**:
-   ```bash
-   docker run -d -p 8080:8080 -v $(pwd)/data:/app/data -e CONNECTIONS_FILE=/app/data/connections.json --name gnats-app gnats-gui
-   ```
+### Build from source using Docker
 
 3. **Access**: Open your browser and visit `http://localhost:8080`
 
