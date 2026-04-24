@@ -2,10 +2,9 @@ name: Build and Publish Docker Image
 
 on:
   push:
-    branches:
-      - main
     tags:
       - 'v*'
+  workflow_dispatch:
 
 jobs:
   build-and-push:
@@ -30,8 +29,7 @@ jobs:
           images: ${{ secrets.DOCKERHUB_USERNAME }}/gnats
           tags: |
             type=semver,pattern={{version}}
-            type=edge,branch=main
-            type=sha
+            type=raw,value=latest
 
       - name: Build and Push
         uses: docker/build-push-action@v5
