@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useConnection } from '../contexts/ConnectionContext';
-import { Plus, Trash2, HardDrive, Search, Package } from 'lucide-react';
+import { Plus, Trash2, HardDrive, Search, Package, RefreshCcw } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 interface ObjectInfo {
@@ -25,6 +25,11 @@ const ObjectStore: React.FC = () => {
 
   useEffect(() => {
     loadBuckets();
+    setSelectedBucket(null);
+    setObjects([]);
+    setBucketStatus(null);
+    setBucketSearch('');
+    setObjectSearch('');
   }, [activeConnection]);
 
   useEffect(() => {
@@ -36,6 +41,12 @@ const ObjectStore: React.FC = () => {
       setBucketStatus(null);
     }
   }, [selectedBucket]);
+
+  const handleSelectBucket = (bucket: string) => {
+    setSelectedBucket(bucket);
+    setObjectSearch('');
+    setObjects([]);
+  };
 
   const loadBuckets = async () => {
     if (!activeConnection) return;
@@ -102,9 +113,14 @@ const ObjectStore: React.FC = () => {
     <div style={{ height: 'calc(100vh - 100px)', display: 'flex', flexDirection: 'column' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
         <h1>{t('object_store')}</h1>
-        <button className="btn btn-primary" onClick={() => setShowAddBucket(true)}>
-          <Plus size={18} /> {t('new_bucket')}
-        </button>
+        <div style={{ display: 'flex', gap: '1rem' }}>
+          <button className="btn btn-secondary" onClick={loadBuckets} disabled={loadingBuckets} title={t('refresh')}>
+            <RefreshCcw size={18} className={loadingBuckets ? 'animate-spin' : ''} />
+          </button>
+          <button className="btn btn-primary" onClick={() => setShowAddBucket(true)}>
+            <Plus size={18} /> {t('new_bucket')}
+          </button>
+        </div>
       </div>
 
       {showAddBucket && (
@@ -145,7 +161,7 @@ const ObjectStore: React.FC = () => {
             ) : filteredBuckets.map(b => (
               <div 
                 key={b} 
-                onClick={() => setSelectedBucket(b)}
+                onClick={() => handleSelectBucket(b)}
                 style={{ 
                   padding: '0.75rem 1rem', 
                   cursor: 'pointer', 
@@ -173,6 +189,9 @@ const ObjectStore: React.FC = () => {
             <>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem', flexShrink: 0 }}>
                 <h3 style={{ margin: 0 }}>{t('objects')} in {selectedBucket}</h3>
+                <button className="btn btn-secondary" onClick={() => { loadObjects(selectedBucket); loadBucketStatus(selectedBucket); }} disabled={loadingObjects} title={t('refresh')}>
+                  <RefreshCcw size={18} className={loadingObjects ? 'animate-spin' : ''} />
+                </button>
               </div>
 
               {bucketStatus && (

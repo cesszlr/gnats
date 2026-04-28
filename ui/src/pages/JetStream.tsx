@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useConnection } from '../contexts/ConnectionContext';
-import { Plus, Trash2, Eye, Eraser, X, List, Box, Search, BarChart2 } from 'lucide-react';
+import { Plus, Trash2, Eye, Eraser, X, List, Box, Search, BarChart2, RefreshCcw } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
@@ -71,6 +71,11 @@ const JetStream: React.FC = () => {
 
   useEffect(() => {
     loadStreams();
+    setViewingStream(null);
+    setViewingConsumers(null);
+    setExpandedStream(null);
+    setMessages([]);
+    setConsumers([]);
   }, [activeConnection]);
 
   const loadStreams = async () => {
@@ -171,9 +176,9 @@ const JetStream: React.FC = () => {
     }
   };
 
-  const loadConsumers = async (stream: string) => {
+  const loadConsumers = async (stream: string, isRefresh = false) => {
     if (!activeConnection) return;
-    if (viewingConsumers === stream) {
+    if (!isRefresh && viewingConsumers === stream) {
       setViewingConsumers(null);
       return;
     }
@@ -216,6 +221,9 @@ const JetStream: React.FC = () => {
               onChange={e => setSearch(e.target.value)} 
             />
           </div>
+          <button className="btn btn-secondary" onClick={loadStreams} disabled={loading} title={t('refresh')}>
+            <RefreshCcw size={18} className={loading ? 'animate-spin' : ''} />
+          </button>
           <button className="btn btn-primary" onClick={() => setShowAdd(true)}>
             <Plus size={18} /> {t('create_stream')}
           </button>
@@ -306,6 +314,9 @@ const JetStream: React.FC = () => {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
               <h3 style={{ margin: 0 }}>Messages: {viewingStream}</h3>
               <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                <button className="btn btn-secondary" onClick={() => loadMessages(viewingStream)} disabled={loadingMsgs} title={t('refresh')}>
+                  <RefreshCcw size={18} className={loadingMsgs ? 'animate-spin' : ''} />
+                </button>
                 <div className="btn-group">
                   <button className={`btn ${formatMode === 'raw' ? 'active' : ''}`} onClick={() => setFormatMode('raw')}>{t('raw')}</button>
                   <button className={`btn ${formatMode === 'json' ? 'active' : ''}`} onClick={() => setFormatMode('json')}>{t('json')}</button>
@@ -314,7 +325,7 @@ const JetStream: React.FC = () => {
                 <button className="btn btn-secondary" onClick={() => setViewingStream(null)}><X size={18} /></button>
               </div>
             </div>
-            <div style={{ maxHeight: '400px', overflowY: 'auto', background: 'rgba(0,0,0,0.02)', padding: '1rem', borderRadius: 'var(--radius)' }}>
+            <div style={{ maxHeight: '600px', overflowY: 'auto', background: 'rgba(0,0,0,0.02)', padding: '1rem', borderRadius: 'var(--radius)' }}>
               {loadingMsgs ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                   {[1, 2, 3].map(i => <div key={i} className="skeleton" style={{ height: '60px', width: '100%' }} />)}
@@ -322,10 +333,13 @@ const JetStream: React.FC = () => {
               ) : messages.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>{t('no_messages')}</div>
               ) : messages.map((m, i) => (
-                <div key={i} className="animate-fade-in" style={{ padding: '0.75rem', borderBottom: '1px solid var(--border-color)', fontSize: '0.85rem' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                    <span style={{ fontWeight: '600', color: 'var(--accent-color)' }}>{m.subject}</span>
-                    <span style={{ color: 'var(--text-secondary)' }}>{new Date(m.time).toLocaleString()}</span>
+                <div key={`${m.sequence}-${i}`} className="animate-fade-in" style={{ padding: '0.75rem', borderBottom: '1px solid var(--border-color)', fontSize: '0.85rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                      <span style={{ backgroundColor: 'var(--border-color)', padding: '0.15rem 0.4rem', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--text-secondary)' }}>#{m.sequence}</span>
+                      <span style={{ fontWeight: '600', color: 'var(--accent-color)' }}>{m.subject}</span>
+                    </div>
+                    <span style={{ color: 'var(--text-secondary)', fontSize: '0.75rem' }}>{new Date(m.time).toLocaleString()}</span>
                   </div>
                   <pre className="code-block">{formatData(m.data, formatMode)}</pre>
                 </div>
@@ -375,7 +389,12 @@ const JetStream: React.FC = () => {
                 
                 {viewingConsumers === s.config.name && (
                   <div className="animate-fade-in" style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border-color)' }}>
-                    <h4 style={{ marginBottom: '1rem', fontSize: '0.875rem' }}>{t('consumers')}</h4>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                      <h4 style={{ margin: 0, fontSize: '0.875rem' }}>{t('consumers')}</h4>
+                      <button className="btn btn-secondary" style={{ padding: '0.25rem 0.5rem' }} onClick={() => loadConsumers(s.config.name, true)} disabled={loadingConsumers} title={t('refresh')}>
+                        <RefreshCcw size={14} className={loadingConsumers ? 'animate-spin' : ''} />
+                      </button>
+                    </div>
                     {loadingConsumers ? (
                       <div style={{ display: 'flex', gap: '1rem' }}>
                         {[1, 2].map(i => <div key={i} className="skeleton" style={{ height: '80px', flex: 1 }} />)}

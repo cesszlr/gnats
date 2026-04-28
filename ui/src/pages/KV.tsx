@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useConnection } from '../contexts/ConnectionContext';
-import { Plus, Trash2, Database, Key, Eye, X, Search } from 'lucide-react';
+import { Plus, Trash2, Database, Key, Eye, X, Search, RefreshCcw } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 const KV: React.FC = () => {
@@ -9,6 +9,9 @@ const KV: React.FC = () => {
   const [buckets, setBuckets] = useState<string[]>([]);
   const [selectedBucket, setSelectedBucket] = useState<string | null>(null);
   const [keys, setKeys] = useState<string[]>([]);
+  const [hasMore, setHasMore] = useState(false);
+  const [offset, setOffset] = useState(0);
+  const PAGE_SIZE = 100;
   const [bucketStatus, setBucketStatus] = useState<any>(null);
   const [loadingBuckets, setLoadingBuckets] = useState(false);
   const [loadingKeys, setLoadingKeys] = useState(false);
@@ -29,17 +32,41 @@ const KV: React.FC = () => {
 
   useEffect(() => {
     loadBuckets();
+    setSelectedBucket(null);
+    setKeys([]);
+    setBucketStatus(null);
+    setViewingKey(null);
+    setBucketSearch('');
+    setKeySearch('');
+    setOffset(0);
   }, [activeConnection]);
 
   useEffect(() => {
+    setOffset(0);
+  }, [keySearch]);
+
+  useEffect(() => {
     if (selectedBucket) {
-      loadKeys(selectedBucket);
+      const timer = setTimeout(() => {
+        loadKeys(selectedBucket, keySearch, offset);
+      }, offset === 0 ? 300 : 0);
       loadBucketStatus(selectedBucket);
+      return () => clearTimeout(timer);
     } else {
       setKeys([]);
+      setHasMore(false);
+      setOffset(0);
       setBucketStatus(null);
     }
-  }, [selectedBucket]);
+  }, [selectedBucket, keySearch, offset]);
+
+  const handleSelectBucket = (bucket: string) => {
+    setSelectedBucket(bucket);
+    setKeySearch('');
+    setOffset(0);
+    setViewingKey(null);
+    setKeys([]);
+  };
 
   const loadBuckets = async () => {
     if (!activeConnection) return;
@@ -55,17 +82,29 @@ const KV: React.FC = () => {
     }
   };
 
-  const loadKeys = async (bucket: string) => {
+  const loadKeys = async (bucket: string, search = '', currentOffset = 0) => {
     if (!activeConnection) return;
     setLoadingKeys(true);
     try {
-      const res = await fetch(`/api/connections/${activeConnection.id}/kv/${bucket}/keys`);
+      const res = await fetch(`/api/connections/${activeConnection.id}/kv/${bucket}/keys?search=${encodeURIComponent(search)}&offset=${currentOffset}&limit=${PAGE_SIZE}`);
       const data = await res.json();
-      setKeys(data || []);
+      if (currentOffset === 0) {
+        setKeys(data.keys || []);
+      } else {
+        setKeys(prev => [...prev, ...(data.keys || [])]);
+      }
+      setHasMore(data.hasMore);
     } catch (err) {
       console.error(err);
     } finally {
       setLoadingKeys(false);
+    }
+  };
+
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const target = e.currentTarget;
+    if (hasMore && !loadingKeys && target.scrollHeight - target.scrollTop <= target.clientHeight + 50) {
+      setOffset(prev => prev + PAGE_SIZE);
     }
   };
 
@@ -157,7 +196,6 @@ const KV: React.FC = () => {
   };
 
   const filteredBuckets = buckets.filter(b => b.toLowerCase().includes(bucketSearch.toLowerCase()));
-  const filteredKeys = keys.filter(k => k.toLowerCase().includes(keySearch.toLowerCase()));
 
   if (!activeConnection) return <div>{t('select_connection')}</div>;
 
@@ -165,9 +203,14 @@ const KV: React.FC = () => {
     <div style={{ height: 'calc(100vh - 100px)', display: 'flex', flexDirection: 'column' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
         <h1>{t('kv')}</h1>
-        <button className="btn btn-primary" onClick={() => setShowAddBucket(true)}>
-          <Plus size={18} /> {t('new_bucket')}
-        </button>
+        <div style={{ display: 'flex', gap: '1rem' }}>
+          <button className="btn btn-secondary" onClick={loadBuckets} disabled={loadingBuckets} title={t('refresh')}>
+            <RefreshCcw size={18} className={loadingBuckets ? 'animate-spin' : ''} />
+          </button>
+          <button className="btn btn-primary" onClick={() => setShowAddBucket(true)}>
+            <Plus size={18} /> {t('new_bucket')}
+          </button>
+        </div>
       </div>
 
       {showAddBucket && (
@@ -233,7 +276,7 @@ const KV: React.FC = () => {
             ) : filteredBuckets.map(b => (
               <div 
                 key={b} 
-                onClick={() => setSelectedBucket(b)}
+                onClick={() => handleSelectBucket(b)}
                 style={{ 
                   padding: '0.75rem 1rem', 
                   cursor: 'pointer', 
@@ -281,9 +324,14 @@ const KV: React.FC = () => {
               <>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem', flexShrink: 0 }}>
                   <h3 style={{ margin: 0 }}>{t('keys')} in {selectedBucket}</h3>
-                  <button className="btn btn-primary" onClick={() => setShowAddKey(true)}>
-                    <Plus size={18} /> {t('put_key')}
-                  </button>
+                  <div style={{ display: 'flex', gap: '1rem' }}>
+                    <button className="btn btn-secondary" onClick={() => { setOffset(0); loadKeys(selectedBucket, keySearch, 0); loadBucketStatus(selectedBucket); }} disabled={loadingKeys} title={t('refresh')}>
+                      <RefreshCcw size={18} className={loadingKeys ? 'animate-spin' : ''} />
+                    </button>
+                    <button className="btn btn-primary" onClick={() => setShowAddKey(true)}>
+                      <Plus size={18} /> {t('put_key')}
+                    </button>
+                  </div>
                 </div>
 
                 {bucketStatus && (
@@ -324,34 +372,46 @@ const KV: React.FC = () => {
                   </div>
                 )}
 
-                <div className="scroll-area" style={{ flex: 1 }}>
-                  {loadingKeys ? (
+                <div className="scroll-area" style={{ flex: 1 }} onScroll={handleScroll}>
+                  {loadingKeys && offset === 0 ? (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                       {[1, 2, 3, 4].map(i => <div key={i} className="skeleton" style={{ height: '50px', width: '100%' }} />)}
                     </div>
-                  ) : filteredKeys.length === 0 ? (
+                  ) : keys.length === 0 ? (
                     <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>
                       <Key size={40} style={{ marginBottom: '1rem', opacity: 0.2 }} />
                       <p>{t('no_keys')}</p>
                     </div>
-                  ) : filteredKeys.map(k => (
-                    <div key={k} className="animate-fade-in" style={{ padding: '0.75rem 1rem', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontWeight: '500' }}>{k}</span>
-                      <div style={{ display: 'flex', gap: '0.5rem' }}>
-                        <button className="btn btn-secondary" style={{ padding: '0.35rem' }} onClick={() => handleViewKey(selectedBucket, k)}>
-                          <Eye size={16} />
-                        </button>
-                        <button className="btn btn-secondary" style={{ padding: '0.35rem', color: 'var(--error-color)' }} onClick={() => {
-                            if (confirm(`Delete key ${k}?`)) {
-                              fetch(`/api/connections/${activeConnection.id}/kv/${selectedBucket}/keys/${k}`, { method: 'DELETE' })
-                                .then(() => loadKeys(selectedBucket));
-                            }
-                        }}>
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+                  ) : (
+                    <>
+                      {keys.map(k => (
+                        <div key={k} className="animate-fade-in" style={{ padding: '0.75rem 1rem', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontWeight: '500' }}>{k}</span>
+                          <div style={{ display: 'flex', gap: '0.5rem' }}>
+                            <button className="btn btn-secondary" style={{ padding: '0.35rem' }} onClick={() => handleViewKey(selectedBucket, k)}>
+                              <Eye size={16} />
+                            </button>
+                            <button className="btn btn-secondary" style={{ padding: '0.35rem', color: 'var(--error-color)' }} onClick={() => {
+                                if (confirm(`Delete key ${k}?`)) {
+                                  fetch(`/api/connections/${activeConnection.id}/kv/${selectedBucket}/keys/${k}`, { method: 'DELETE' })
+                                    .then(() => {
+                                      setOffset(0);
+                                      loadKeys(selectedBucket, keySearch, 0);
+                                    });
+                                }
+                            }}>
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                      {loadingKeys && offset > 0 && (
+                        <div style={{ padding: '1rem', textAlign: 'center' }}>
+                          <RefreshCcw size={20} className="animate-spin" style={{ color: 'var(--accent-color)' }} />
+                        </div>
+                      )}
+                    </>
+                  )}
                 </div>
               </>
             ) : (

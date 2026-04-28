@@ -3,6 +3,9 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
+	"sort"
+	"strconv"
+	"strings"
 	"time"
 
 	internalnats "gnats/internal/nats"
@@ -321,6 +324,20 @@ func (a *API) DeleteKV(w http.ResponseWriter, r *http.Request) {
 func (a *API) ListKVKeys(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	bucket := chi.URLParam(r, "bucket")
+	search := r.URL.Query().Get("search")
+
+	offsetStr := r.URL.Query().Get("offset")
+	limitStr := r.URL.Query().Get("limit")
+
+	offset := 0
+	if o, err := strconv.Atoi(offsetStr); err == nil && o >= 0 {
+		offset = o
+	}
+
+	limit := 100
+	if l, err := strconv.Atoi(limitStr); err == nil && l > 0 {
+		limit = l
+	}
 
 	client, err := a.manager.GetClient(id)
 	if err != nil {
@@ -334,17 +351,43 @@ func (a *API) ListKVKeys(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	keys, err := kv.Keys(r.Context())
+	keysLister, err := kv.ListKeys(r.Context())
 	if err != nil {
 		if err == jetstream.ErrNoKeysFound {
-			json.NewEncoder(w).Encode([]string{})
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"keys":    []string{},
+				"hasMore": false,
+			})
 			return
 		}
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	json.NewEncoder(w).Encode(keys)
+	var result []string
+	count := 0
+	matchedCount := 0
+	hasMore := false
+
+	searchLower := strings.ToLower(search)
+
+	for key := range keysLister.Keys() {
+		if search == "" || strings.Contains(strings.ToLower(key), searchLower) {
+			if matchedCount >= offset && count < limit {
+				result = append(result, key)
+				count++
+			} else if matchedCount >= offset+limit {
+				hasMore = true
+				break
+			}
+			matchedCount++
+		}
+	}
+
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"keys":    result,
+		"hasMore": hasMore,
+	})
 }
 
 func (a *API) PutKVKey(w http.ResponseWriter, r *http.Request) {
@@ -590,6 +633,12 @@ func (a *API) GetStreamMessages(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	streamName := chi.URLParam(r, "stream")
 
+	limitStr := r.URL.Query().Get("limit")
+	limit := 50
+	if l, err := strconv.Atoi(limitStr); err == nil && l > 0 {
+		limit = l
+	}
+
 	client, err := a.manager.GetClient(id)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
@@ -602,16 +651,24 @@ func (a *API) GetStreamMessages(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cons, err := stream.CreateOrUpdateConsumer(r.Context(), jetstream.ConsumerConfig{
+	cfg := jetstream.ConsumerConfig{
 		AckPolicy: jetstream.AckNonePolicy,
-	})
+	}
+
+	// Default to last messages
+	cfg.DeliverPolicy = jetstream.DeliverLastPerSubjectPolicy
+	if limit > 1 {
+		cfg.DeliverPolicy = jetstream.DeliverLastPolicy
+	}
+
+	cons, err := stream.CreateOrUpdateConsumer(r.Context(), cfg)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	defer stream.DeleteConsumer(r.Context(), cons.CachedInfo().Name)
 
-	msgs, err := cons.Fetch(50, jetstream.FetchMaxWait(time.Second))
+	msgs, err := cons.Fetch(limit, jetstream.FetchMaxWait(time.Second))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -619,13 +676,19 @@ func (a *API) GetStreamMessages(w http.ResponseWriter, r *http.Request) {
 
 	var result []interface{}
 	for msg := range msgs.Messages() {
+		meta, _ := msg.Metadata()
 		result = append(result, map[string]interface{}{
 			"subject":  msg.Subject(),
 			"data":     string(msg.Data()),
-			"sequence": 0,
-			"time":     time.Now(),
+			"sequence": meta.Sequence.Stream,
+			"time":     meta.Timestamp,
 		})
 	}
+
+	// Sort by sequence descending to show newest first
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].(map[string]interface{})["sequence"].(uint64) > result[j].(map[string]interface{})["sequence"].(uint64)
+	})
 
 	json.NewEncoder(w).Encode(result)
 }
