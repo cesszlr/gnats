@@ -13,12 +13,13 @@ GNATS is a modern, lightweight, and powerful open-source management interface de
 ## ✨ Core Features
 
 - 🔌 **Multi-Connection Management**: 
-    - **Persistence**: Connection configurations are automatically saved to a local file.
-    - **Quick Reconnect**: Easily switch between saved configurations.
+    - **Single Active Connection**: Smart toggling system that automatically manages background resources when switching environments.
+    - **Connection Editing**: Easily update existing configurations via a unified Modal interface.
     - **Advanced TLS**: Support for both file paths and direct PEM content pasting.
-- 📊 **Real-time Dashboard**: 
-    - **Live Monitoring**: Real-time request rate charts.
-    - **Statistics**: Server status, RTT latency, and JetStream metrics.
+- 📊 **Account-Wide Monitoring**: 
+    - **NATS Monitoring Integration**: Direct integration with the NATS `/accstatz` endpoint (port 8222) for precise metrics.
+    - **Multi-Account Selection**: Seamlessly switch between different NATS Accounts ($G, $SYS, etc.) to monitor isolated traffic.
+    - **Real-time Statistics**: Accurate throughput charts (msgs/s), active connections, and slow consumer alerts with high-fidelity animations.
 - 🚀 **Core Messaging (Pub/Sub)**: 
     - Subscribe to subjects in real-time and view incoming messages.
     - Publish messages with custom Payloads, Headers, and Reply-To addresses.
