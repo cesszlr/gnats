@@ -2,7 +2,9 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"net/url"
 	"sort"
 	"strconv"
 	"strings"
@@ -30,6 +32,7 @@ func (a *API) Routes() chi.Router {
 
 	r.Get("/connections", a.ListConnections)
 	r.Post("/connections", a.Connect)
+	r.Put("/connections/{id}", a.UpdateConnection)
 	r.Delete("/connections/{id}", a.Disconnect)
 	r.Delete("/connections/{id}/forget", a.DeleteConnection)
 	r.Post("/connections/{id}/publish", a.Publish)
@@ -118,7 +121,7 @@ func (a *API) Publish(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	client, err := a.manager.GetClient(id)
+	client, err := a.manager.EnsureClient(id)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
@@ -144,7 +147,7 @@ func (a *API) Publish(w http.ResponseWriter, r *http.Request) {
 
 func (a *API) ListStreams(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
-	client, err := a.manager.GetClient(id)
+	client, err := a.manager.EnsureClient(id)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
@@ -171,7 +174,7 @@ func (a *API) CreateStream(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	client, err := a.manager.GetClient(id)
+	client, err := a.manager.EnsureClient(id)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
@@ -190,7 +193,7 @@ func (a *API) DeleteStream(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	streamName := chi.URLParam(r, "stream")
 
-	client, err := a.manager.GetClient(id)
+	client, err := a.manager.EnsureClient(id)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
@@ -208,7 +211,7 @@ func (a *API) ListConsumers(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	streamName := chi.URLParam(r, "stream")
 
-	client, err := a.manager.GetClient(id)
+	client, err := a.manager.EnsureClient(id)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
@@ -237,7 +240,7 @@ func (a *API) GetKVStatus(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	bucket := chi.URLParam(r, "bucket")
 
-	client, err := a.manager.GetClient(id)
+	client, err := a.manager.EnsureClient(id)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
@@ -260,7 +263,7 @@ func (a *API) GetKVStatus(w http.ResponseWriter, r *http.Request) {
 
 func (a *API) ListKV(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
-	client, err := a.manager.GetClient(id)
+	client, err := a.manager.EnsureClient(id)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
@@ -282,7 +285,7 @@ func (a *API) CreateKV(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	client, err := a.manager.GetClient(id)
+	client, err := a.manager.EnsureClient(id)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
@@ -307,7 +310,7 @@ func (a *API) DeleteKV(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	bucket := chi.URLParam(r, "bucket")
 
-	client, err := a.manager.GetClient(id)
+	client, err := a.manager.EnsureClient(id)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
@@ -339,7 +342,7 @@ func (a *API) ListKVKeys(w http.ResponseWriter, r *http.Request) {
 		limit = l
 	}
 
-	client, err := a.manager.GetClient(id)
+	client, err := a.manager.EnsureClient(id)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
@@ -403,7 +406,7 @@ func (a *API) PutKVKey(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	client, err := a.manager.GetClient(id)
+	client, err := a.manager.EnsureClient(id)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
@@ -429,7 +432,7 @@ func (a *API) DeleteKVKey(w http.ResponseWriter, r *http.Request) {
 	bucket := chi.URLParam(r, "bucket")
 	key := chi.URLParam(r, "key")
 
-	client, err := a.manager.GetClient(id)
+	client, err := a.manager.EnsureClient(id)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
@@ -451,7 +454,7 @@ func (a *API) DeleteKVKey(w http.ResponseWriter, r *http.Request) {
 
 func (a *API) ListObjectStores(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
-	client, err := a.manager.GetClient(id)
+	client, err := a.manager.EnsureClient(id)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
@@ -473,7 +476,7 @@ func (a *API) CreateObjectStore(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	client, err := a.manager.GetClient(id)
+	client, err := a.manager.EnsureClient(id)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
@@ -498,7 +501,7 @@ func (a *API) DeleteObjectStore(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	bucket := chi.URLParam(r, "bucket")
 
-	client, err := a.manager.GetClient(id)
+	client, err := a.manager.EnsureClient(id)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
@@ -516,7 +519,7 @@ func (a *API) GetObjectStoreStatus(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	bucket := chi.URLParam(r, "bucket")
 
-	client, err := a.manager.GetClient(id)
+	client, err := a.manager.EnsureClient(id)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
@@ -541,7 +544,7 @@ func (a *API) ListObjects(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	bucket := chi.URLParam(r, "bucket")
 
-	client, err := a.manager.GetClient(id)
+	client, err := a.manager.EnsureClient(id)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
@@ -571,7 +574,7 @@ func (a *API) DeleteObject(w http.ResponseWriter, r *http.Request) {
 	bucket := chi.URLParam(r, "bucket")
 	key := chi.URLParam(r, "key")
 
-	client, err := a.manager.GetClient(id)
+	client, err := a.manager.EnsureClient(id)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
@@ -593,7 +596,7 @@ func (a *API) DeleteObject(w http.ResponseWriter, r *http.Request) {
 
 func (a *API) ListServices(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
-	client, err := a.manager.GetClient(id)
+	client, err := a.manager.EnsureClient(id)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
@@ -639,7 +642,7 @@ func (a *API) GetStreamMessages(w http.ResponseWriter, r *http.Request) {
 		limit = l
 	}
 
-	client, err := a.manager.GetClient(id)
+	client, err := a.manager.EnsureClient(id)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
@@ -697,7 +700,7 @@ func (a *API) PurgeStream(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	streamName := chi.URLParam(r, "stream")
 
-	client, err := a.manager.GetClient(id)
+	client, err := a.manager.EnsureClient(id)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
@@ -722,7 +725,7 @@ func (a *API) GetKVKey(w http.ResponseWriter, r *http.Request) {
 	bucket := chi.URLParam(r, "bucket")
 	key := chi.URLParam(r, "key")
 
-	client, err := a.manager.GetClient(id)
+	client, err := a.manager.EnsureClient(id)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
@@ -747,21 +750,52 @@ func (a *API) GetKVKey(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func (a *API) UpdateConnection(w http.ResponseWriter, r *http.Request) {
+	var cfg internalnats.ConnectionConfig
+	if err := json.NewDecoder(r.Body).Decode(&cfg); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	id := chi.URLParam(r, "id")
+	if cfg.ID == "" {
+		cfg.ID = id
+	}
+
+	a.manager.UpdateConfig(cfg)
+	w.WriteHeader(http.StatusNoContent)
+}
+
 func (a *API) GetStats(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
-	client, err := a.manager.GetClient(id)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
+	client, ok := a.manager.GetActiveClient(id)
+	if !ok {
+		// Not currently active, return disconnected status
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"status": "DISCONNECTED",
+		})
 		return
 	}
 
 	stats := map[string]interface{}{
 		"server_info": client.Conn.ConnectedAddr(),
 		"rtt":         0,
+		"status":      strings.ToUpper(client.Conn.Status().String()),
 	}
 
 	rtt, _ := client.Conn.RTT()
 	stats["rtt"] = rtt.String()
+
+	// Connection stats
+	cStats := client.Conn.Stats()
+	stats["connection"] = map[string]interface{}{
+		"in_msgs":       cStats.InMsgs,
+		"out_msgs":      cStats.OutMsgs,
+		"in_bytes":      cStats.InBytes,
+		"out_bytes":     cStats.OutBytes,
+		"reconnects":    cStats.Reconnects,
+		"subscriptions": client.Conn.NumSubscriptions(),
+	}
 
 	// JetStream stats
 	jsInfo, err := client.JS.AccountInfo(r.Context())
@@ -769,5 +803,47 @@ func (a *API) GetStats(w http.ResponseWriter, r *http.Request) {
 		stats["jetstream"] = jsInfo
 	}
 
+	// Monitoring data
+	monitorURL := client.Config.MonitoringURL
+	if monitorURL == "" {
+		// Try to derive from NATS URL
+		if u, err := url.Parse(client.Config.URL); err == nil {
+			host := u.Hostname()
+			if host == "" {
+				host = "localhost"
+			}
+			monitorURL = fmt.Sprintf("http://%s:8222", host)
+		}
+	}
+
+	if monitorURL != "" {
+		monitorURL = strings.TrimSuffix(monitorURL, "/") + "/accstatz?unused=true"
+		var monitorData struct {
+			AccountStatz []map[string]interface{} `json:"account_statz"`
+		}
+		if err := fetchJSON(monitorURL, &monitorData); err == nil {
+			// Sort accounts by name for stability
+			sort.Slice(monitorData.AccountStatz, func(i, j int) bool {
+				nameI, _ := monitorData.AccountStatz[i]["acc"].(string)
+				nameJ, _ := monitorData.AccountStatz[j]["acc"].(string)
+				return nameI < nameJ
+			})
+			stats["monitoring"] = monitorData
+		} else {
+			stats["monitoring_error"] = err.Error()
+			stats["monitoring_url"] = monitorURL
+		}
+	}
+
 	json.NewEncoder(w).Encode(stats)
+}
+
+func fetchJSON(url string, target interface{}) error {
+	client := &http.Client{Timeout: 2 * time.Second}
+	resp, err := client.Get(url)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	return json.NewDecoder(resp.Body).Decode(target)
 }

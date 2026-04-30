@@ -3,6 +3,7 @@ import { useConnection } from '../contexts/ConnectionContext';
 import { Plus, Trash2, Eye, Eraser, X, List, Box, Search, BarChart2, RefreshCcw } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import Modal from '../components/Modal';
 
 interface StreamInfo {
   config: {
@@ -230,7 +231,58 @@ const JetStream: React.FC = () => {
         </div>
       </div>
 
-      {streams.length > 0 && !showAdd && !viewingStream && (
+      <Modal 
+        isOpen={showAdd} 
+        onClose={() => setShowAdd(false)} 
+        title={t('create_stream')}
+        width="800px"
+      >
+        <form onSubmit={handleCreate}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div className="form-group">
+              <label className="form-label">{t('stream_name')}</label>
+              <input className="input" value={newStream.name} onChange={e => setNewStream({ ...newStream, name: e.target.value })} required />
+            </div>
+            <div className="form-group">
+              <label className="form-label">{t('subjects')}</label>
+              <input className="input" value={newStream.subjects} onChange={e => setNewStream({ ...newStream, subjects: e.target.value })} placeholder="e.g. orders.*, shipping.>" required />
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '1rem' }}>
+            <div className="form-group">
+              <label className="form-label">{t('storage')}</label>
+              <select className="input" value={newStream.storage} onChange={e => setNewStream({ ...newStream, storage: e.target.value })}>
+                <option value="file">File</option>
+                <option value="memory">Memory</option>
+              </select>
+            </div>
+            <div className="form-group">
+              <label className="form-label">{t('retention')}</label>
+              <select className="input" value={newStream.retention} onChange={e => setNewStream({ ...newStream, retention: e.target.value })}>
+                <option value="limits">Limits</option>
+                <option value="interest">Interest</option>
+                <option value="workqueue">WorkQueue</option>
+              </select>
+            </div>
+            <div className="form-group">
+              <label className="form-label">{t('max_msgs')}</label>
+              <input type="number" className="input" value={newStream.max_msgs} onChange={e => setNewStream({ ...newStream, max_msgs: parseInt(e.target.value) })} />
+            </div>
+            <div className="form-group">
+              <label className="form-label">{t('max_bytes')}</label>
+              <input type="number" className="input" value={newStream.max_bytes} onChange={e => setNewStream({ ...newStream, max_bytes: parseInt(e.target.value) })} />
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', marginTop: '1rem' }}>
+            <button type="button" className="btn btn-secondary" onClick={() => setShowAdd(false)}>{t('cancel')}</button>
+            <button type="submit" className="btn btn-primary">{t('create')}</button>
+          </div>
+        </form>
+      </Modal>
+
+      {streams.length > 0 && !viewingStream && (
         <div className="card animate-fade-in" style={{ marginBottom: '2rem', padding: '1.25rem', flexShrink: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', color: 'var(--text-secondary)', fontSize: '0.875rem', fontWeight: 600 }}>
             <BarChart2 size={18} /> {t('messages')} (Top 10 Streams)
@@ -261,54 +313,6 @@ const JetStream: React.FC = () => {
       )}
 
       <div className="scroll-area" style={{ flex: 1, paddingRight: '0.5rem' }}>
-        {showAdd && (
-          <div className="card animate-fade-in" style={{ marginBottom: '2rem' }}>
-            <form onSubmit={handleCreate}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                <div className="form-group">
-                  <label className="form-label">{t('stream_name')}</label>
-                  <input className="input" value={newStream.name} onChange={e => setNewStream({ ...newStream, name: e.target.value })} required />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">{t('subjects')}</label>
-                  <input className="input" value={newStream.subjects} onChange={e => setNewStream({ ...newStream, subjects: e.target.value })} placeholder="e.g. orders.*, shipping.>" required />
-                </div>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '1rem' }}>
-                <div className="form-group">
-                  <label className="form-label">{t('storage')}</label>
-                  <select className="input" value={newStream.storage} onChange={e => setNewStream({ ...newStream, storage: e.target.value })}>
-                    <option value="file">File</option>
-                    <option value="memory">Memory</option>
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label className="form-label">{t('retention')}</label>
-                  <select className="input" value={newStream.retention} onChange={e => setNewStream({ ...newStream, retention: e.target.value })}>
-                    <option value="limits">Limits</option>
-                    <option value="interest">Interest</option>
-                    <option value="workqueue">WorkQueue</option>
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label className="form-label">{t('max_msgs')}</label>
-                  <input type="number" className="input" value={newStream.max_msgs} onChange={e => setNewStream({ ...newStream, max_msgs: parseInt(e.target.value) })} />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">{t('max_bytes')}</label>
-                  <input type="number" className="input" value={newStream.max_bytes} onChange={e => setNewStream({ ...newStream, max_bytes: parseInt(e.target.value) })} />
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', gap: '1rem' }}>
-                <button type="submit" className="btn btn-primary">{t('create')}</button>
-                <button type="button" className="btn btn-secondary" onClick={() => setShowAdd(false)}>{t('cancel')}</button>
-              </div>
-            </form>
-          </div>
-        )}
-
         {viewingStream && (
           <div className="card animate-fade-in" style={{ marginBottom: '2rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>

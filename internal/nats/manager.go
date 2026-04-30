@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"sort"
 	"strings"
 	"sync"
 
@@ -43,6 +44,9 @@ type ConnectionConfig struct {
 
 	// JetStream Options
 	Domain string `json:"domain,omitempty"`
+
+	// Monitoring
+	MonitoringURL string `json:"monitoring_url,omitempty"`
 }
 
 // Client holds a single NATS connection and its related stores
@@ -97,7 +101,15 @@ func (m *Manager) Connect(cfg ConnectionConfig) (*Client, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	// If already connected, close it first to refresh settings
+	// Disconnect ALL other clients first (Single Active Connection Rule)
+	for id, client := range m.clients {
+		if id != cfg.ID {
+			client.Conn.Close()
+			delete(m.clients, id)
+		}
+	}
+
+	// If the current one is already connected, close it first to refresh settings
 	if client, ok := m.clients[cfg.ID]; ok {
 		client.Conn.Close()
 		delete(m.clients, cfg.ID)
@@ -223,7 +235,7 @@ func (m *Manager) DeleteConfig(id string) error {
 	return nil
 }
 
-func (m *Manager) GetClient(id string) (*Client, error) {
+func (m *Manager) EnsureClient(id string) (*Client, error) {
 	m.mu.RLock()
 	// Check if already active
 	if client, ok := m.clients[id]; ok {
@@ -243,6 +255,24 @@ func (m *Manager) GetClient(id string) (*Client, error) {
 	return m.Connect(cfg)
 }
 
+func (m *Manager) GetActiveClient(id string) (*Client, bool) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	client, ok := m.clients[id]
+	return client, ok
+}
+
+func (m *Manager) UpdateConfig(cfg ConnectionConfig) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	// If already connected, we might want to close it to apply changes later,
+	// but for "UpdateConfig" specifically, we just update the stored config.
+	// If the user wants to reconnect, they can do so separately.
+	m.configs[cfg.ID] = cfg
+	m.saveConfigs()
+}
+
 func (m *Manager) ListClients() []ConnectionConfig {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
@@ -250,11 +280,16 @@ func (m *Manager) ListClients() []ConnectionConfig {
 	result := make([]ConnectionConfig, 0, len(m.configs))
 	for _, cfg := range m.configs {
 		if client, ok := m.clients[cfg.ID]; ok {
-			cfg.Status = client.Conn.Status().String()
+			cfg.Status = strings.ToUpper(client.Conn.Status().String())
 		} else {
 			cfg.Status = "DISCONNECTED"
 		}
 		result = append(result, cfg)
 	}
+
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].ID < result[j].ID
+	})
+
 	return result
 }

@@ -16,6 +16,7 @@ export interface ConnectionConfig {
   cert_content?: string;
   key_content?: string;
   domain?: string;
+  monitoring_url?: string;
 }
 
 export const apiClient = {
@@ -50,5 +51,17 @@ export const apiClient = {
       method: 'DELETE',
     });
     if (!res.ok) throw new Error('Failed to delete connection');
+  },
+
+  async updateConnection(id: string, cfg: ConnectionConfig): Promise<void> {
+    const res = await fetch(`${BASE_URL}/connections/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(cfg),
+    });
+    if (!res.ok) {
+      const error = await res.text();
+      throw new Error(error || 'Failed to update connection');
+    }
   },
 };

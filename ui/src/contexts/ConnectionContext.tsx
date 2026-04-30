@@ -43,6 +43,15 @@ export const ConnectionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     try {
       const data = await apiClient.listConnections();
       setConnections(data);
+      
+      // Update active connection status from the list if it exists
+      if (activeConnection) {
+        const current = data.find(c => c.id === activeConnection.id);
+        if (current && JSON.stringify(current) !== JSON.stringify(activeConnection)) {
+          setActiveConnection(current);
+        }
+      }
+
       if (newActiveID) {
         const found = data.find(c => c.id === newActiveID);
         if (found) setActiveConnection(found);

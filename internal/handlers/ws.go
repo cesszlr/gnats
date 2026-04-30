@@ -38,7 +38,7 @@ func (h *WSHandler) Subscribe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	client, err := h.manager.GetClient(connID)
+	client, err := h.manager.EnsureClient(connID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useConnection } from '../contexts/ConnectionContext';
 import { Plus, Trash2, Database, Key, Eye, X, Search, RefreshCcw } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import Modal from '../components/Modal';
 
 const KV: React.FC = () => {
   const { activeConnection } = useConnection();
@@ -213,45 +214,48 @@ const KV: React.FC = () => {
         </div>
       </div>
 
-      {showAddBucket && (
-        <div className="card animate-fade-in" style={{ marginBottom: '2rem' }}>
-          <form onSubmit={handleCreateBucket}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-              <div className="form-group">
-                <label className="form-label">{t('bucket_name')}</label>
-                <input className="input" value={newBucket.bucket} onChange={e => setNewBucket({ ...newBucket, bucket: e.target.value })} required />
-              </div>
-              <div className="form-group">
-                <label className="form-label">{t('history')}</label>
-                <input type="number" className="input" value={newBucket.history} onChange={e => setNewBucket({ ...newBucket, history: parseInt(e.target.value) })} min={1} max={64} />
-              </div>
+      <Modal 
+        isOpen={showAddBucket} 
+        onClose={() => setShowAddBucket(false)} 
+        title={t('new_bucket')}
+        width="600px"
+      >
+        <form onSubmit={handleCreateBucket}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div className="form-group">
+              <label className="form-label">{t('bucket_name')}</label>
+              <input className="input" value={newBucket.bucket} onChange={e => setNewBucket({ ...newBucket, bucket: e.target.value })} required />
             </div>
+            <div className="form-group">
+              <label className="form-label">{t('history')}</label>
+              <input type="number" className="input" value={newBucket.history} onChange={e => setNewBucket({ ...newBucket, history: parseInt(e.target.value) })} min={1} max={64} />
+            </div>
+          </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
-              <div className="form-group">
-                <label className="form-label">{t('ttl')} ({t('optional')})</label>
-                <input type="number" className="input" value={newBucket.ttl} onChange={e => setNewBucket({ ...newBucket, ttl: parseInt(e.target.value) })} min={0} />
-              </div>
-              <div className="form-group">
-                <label className="form-label">{t('storage')}</label>
-                <select className="input" value={newBucket.storage} onChange={e => setNewBucket({ ...newBucket, storage: e.target.value })}>
-                  <option value="file">File</option>
-                  <option value="memory">Memory</option>
-                </select>
-              </div>
-              <div className="form-group">
-                <label className="form-label">{t('replicas')}</label>
-                <input type="number" className="input" value={newBucket.replicas} onChange={e => setNewBucket({ ...newBucket, replicas: parseInt(e.target.value) })} min={1} max={5} />
-              </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
+            <div className="form-group">
+              <label className="form-label">{t('ttl')} ({t('optional')})</label>
+              <input type="number" className="input" value={newBucket.ttl} onChange={e => setNewBucket({ ...newBucket, ttl: parseInt(e.target.value) })} min={0} />
             </div>
+            <div className="form-group">
+              <label className="form-label">{t('storage')}</label>
+              <select className="input" value={newBucket.storage} onChange={e => setNewBucket({ ...newBucket, storage: e.target.value })}>
+                <option value="file">File</option>
+                <option value="memory">Memory</option>
+              </select>
+            </div>
+            <div className="form-group">
+              <label className="form-label">{t('replicas')}</label>
+              <input type="number" className="input" value={newBucket.replicas} onChange={e => setNewBucket({ ...newBucket, replicas: parseInt(e.target.value) })} min={1} max={5} />
+            </div>
+          </div>
 
-            <div style={{ display: 'flex', gap: '1rem' }}>
-              <button type="submit" className="btn btn-primary">{t('create')}</button>
-              <button type="button" className="btn btn-secondary" onClick={() => setShowAddBucket(false)}>{t('cancel')}</button>
-            </div>
-          </form>
-        </div>
-      )}
+          <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', marginTop: '1rem' }}>
+            <button type="button" className="btn btn-secondary" onClick={() => setShowAddBucket(false)}>{t('cancel')}</button>
+            <button type="submit" className="btn btn-primary">{t('create')}</button>
+          </div>
+        </form>
+      </Modal>
 
       <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr', gap: '2rem', flex: 1, overflow: 'hidden' }}>
         <div className="card scroll-area animate-fade-in" style={{ height: '100%', display: 'flex', flexDirection: 'column', padding: '1rem' }}>
@@ -334,6 +338,28 @@ const KV: React.FC = () => {
                   </div>
                 </div>
 
+                <Modal 
+                  isOpen={showAddKey} 
+                  onClose={() => setShowAddKey(false)} 
+                  title={t('put_key')}
+                  width="600px"
+                >
+                  <form onSubmit={handlePutKey}>
+                    <div className="form-group">
+                      <label className="form-label">{t('key')}</label>
+                      <input className="input" value={newKey.key} onChange={e => setNewKey({ ...newKey, key: e.target.value })} placeholder="e.g. config.timeout" required />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">{t('value')} (JSON supported)</label>
+                      <textarea className="input" style={{ height: '100px', fontFamily: 'monospace' }} value={newKey.value} onChange={e => setNewKey({ ...newKey, value: e.target.value })} required />
+                    </div>
+                    <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', marginTop: '1rem' }}>
+                      <button type="button" className="btn btn-secondary" onClick={() => setShowAddKey(false)}>{t('cancel')}</button>
+                      <button type="submit" className="btn btn-primary">{t('create')}</button>
+                    </div>
+                  </form>
+                </Modal>
+
                 {bucketStatus && (
                   <div style={{ display: 'flex', gap: '1.5rem', marginBottom: '1rem', fontSize: '0.75rem', color: 'var(--text-secondary)', flexShrink: 0 }}>
                     <span>{t('values')}: <span style={{ color: 'var(--text-primary)', fontWeight: '500' }}>{bucketStatus.values}</span></span>
@@ -352,25 +378,6 @@ const KV: React.FC = () => {
                     onChange={e => setKeySearch(e.target.value)}
                   />
                 </div>
-
-                {showAddKey && (
-                  <div className="animate-fade-in" style={{ marginBottom: '1.5rem', padding: '1rem', border: '1px solid var(--border-color)', borderRadius: 'var(--radius)', flexShrink: 0, background: 'rgba(0,0,0,0.01)' }}>
-                    <form onSubmit={handlePutKey}>
-                      <div className="form-group">
-                        <label className="form-label">{t('key')}</label>
-                        <input className="input" value={newKey.key} onChange={e => setNewKey({ ...newKey, key: e.target.value })} placeholder="e.g. config.timeout" required />
-                      </div>
-                      <div className="form-group">
-                        <label className="form-label">{t('value')} (JSON supported)</label>
-                        <textarea className="input" style={{ height: '100px', fontFamily: 'monospace' }} value={newKey.value} onChange={e => setNewKey({ ...newKey, value: e.target.value })} required />
-                      </div>
-                      <div style={{ display: 'flex', gap: '1rem' }}>
-                        <button type="submit" className="btn btn-primary">{t('create')}</button>
-                        <button type="button" className="btn btn-secondary" onClick={() => setShowAddKey(false)}>{t('cancel')}</button>
-                      </div>
-                    </form>
-                  </div>
-                )}
 
                 <div className="scroll-area" style={{ flex: 1 }} onScroll={handleScroll}>
                   {loadingKeys && offset === 0 ? (
