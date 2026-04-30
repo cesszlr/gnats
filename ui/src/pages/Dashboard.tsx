@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useConnection } from '../contexts/ConnectionContext';
 import { Activity, Server, Clock, RefreshCcw, TrendingUp, Zap } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { apiClient } from '../api/client';
 import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 
 const AnimatedNumber: React.FC<{ value: string | number; className?: string }> = ({ value, className }) => {
@@ -64,8 +65,7 @@ const Dashboard: React.FC = () => {
 
     setLoading(true);
     try {
-      const res = await fetch(`/api/connections/${activeConnection.id}/stats`);
-      const data = await res.json();
+      const data = await apiClient.getStats(activeConnection.id);
       setStats(data);
 
       // If backend says disconnected, we stop updating history to keep the last chart state or clear it

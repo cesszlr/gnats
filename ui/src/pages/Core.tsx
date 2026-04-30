@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useConnection } from '../contexts/ConnectionContext';
 import { Send, Play, Square, MessageSquare } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { apiClient } from '../api/client';
 
 interface Message {
   subject: string;
@@ -36,17 +37,12 @@ const Core: React.FC = () => {
     }
 
     try {
-      const res = await fetch(`/api/connections/${activeConnection.id}/publish`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          subject: pubSubject, 
-          data: pubData,
-          reply: pubReply,
-          headers: headers
-        }),
+      await apiClient.publish(activeConnection.id, { 
+        subject: pubSubject, 
+        data: pubData,
+        reply: pubReply,
+        headers: headers
       });
-      if (!res.ok) throw new Error(await res.text());
     } catch (err) {
       alert(err);
     }

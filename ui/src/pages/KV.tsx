@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useConnection } from '../contexts/ConnectionContext';
 import { Plus, Trash2, Database, Key, Eye, X, Search, RefreshCcw } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { apiClient } from '../api/client';
 import Modal from '../components/Modal';
 
 const KV: React.FC = () => {
@@ -73,8 +74,7 @@ const KV: React.FC = () => {
     if (!activeConnection) return;
     setLoadingBuckets(true);
     try {
-      const res = await fetch(`/api/connections/${activeConnection.id}/kv`);
-      const data = await res.json();
+      const data = await apiClient.listKV(activeConnection.id);
       setBuckets(data || []);
     } catch (err) {
       console.error(err);
@@ -87,8 +87,7 @@ const KV: React.FC = () => {
     if (!activeConnection) return;
     setLoadingKeys(true);
     try {
-      const res = await fetch(`/api/connections/${activeConnection.id}/kv/${bucket}/keys?search=${encodeURIComponent(search)}&offset=${currentOffset}&limit=${PAGE_SIZE}`);
-      const data = await res.json();
+      const data = await apiClient.listKVKeys(activeConnection.id, bucket, search, currentOffset, PAGE_SIZE);
       if (currentOffset === 0) {
         setKeys(data.keys || []);
       } else {
@@ -112,8 +111,7 @@ const KV: React.FC = () => {
   const loadBucketStatus = async (bucket: string) => {
     if (!activeConnection) return;
     try {
-      const res = await fetch(`/api/connections/${activeConnection.id}/kv/${bucket}/status`);
-      const data = await res.json();
+      const data = await apiClient.getKVStatus(activeConnection.id, bucket);
       setBucketStatus(data);
     } catch (err) {
       console.error(err);
@@ -148,8 +146,7 @@ const KV: React.FC = () => {
   const handleViewKey = async (bucket: string, key: string) => {
     if (!activeConnection) return;
     try {
-      const res = await fetch(`/api/connections/${activeConnection.id}/kv/${bucket}/keys/${key}`);
-      const data = await res.json();
+      const data = await apiClient.getKVKey(activeConnection.id, bucket, key);
       setViewingKey(data);
     } catch (err) {
       alert(err);
@@ -160,18 +157,13 @@ const KV: React.FC = () => {
     e.preventDefault();
     if (!activeConnection) return;
     try {
-      const res = await fetch(`/api/connections/${activeConnection.id}/kv`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          bucket: newBucket.bucket,
-          history: Number(newBucket.history),
-          ttl: Number(newBucket.ttl) * 1e9, // Convert seconds to nanoseconds
-          storage: newBucket.storage,
-          replicas: Number(newBucket.replicas),
-        }),
+      await apiClient.createKV(activeConnection.id, {
+        bucket: newBucket.bucket,
+        history: Number(newBucket.history),
+        ttl: Number(newBucket.ttl) * 1e9, // Convert seconds to nanoseconds
+        storage: newBucket.storage,
+        replicas: Number(newBucket.replicas),
       });
-      if (!res.ok) throw new Error(await res.text());
       setShowAddBucket(false);
       loadBuckets();
     } catch (err) {
@@ -183,12 +175,7 @@ const KV: React.FC = () => {
     e.preventDefault();
     if (!activeConnection || !selectedBucket) return;
     try {
-      const res = await fetch(`/api/connections/${activeConnection.id}/kv/${selectedBucket}/keys/${newKey.key}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ value: newKey.value }),
-      });
-      if (!res.ok) throw new Error(await res.text());
+      await apiClient.putKVKey(activeConnection.id, selectedBucket, newKey.key, newKey.value);
       setShowAddKey(false);
       loadKeys(selectedBucket);
     } catch (err) {
@@ -400,7 +387,7 @@ const KV: React.FC = () => {
                             </button>
                             <button className="btn btn-secondary" style={{ padding: '0.35rem', color: 'var(--error-color)' }} onClick={() => {
                                 if (confirm(`Delete key ${k}?`)) {
-                                  fetch(`/api/connections/${activeConnection.id}/kv/${selectedBucket}/keys/${k}`, { method: 'DELETE' })
+                                  apiClient.deleteKVKey(activeConnection.id, selectedBucket, k)
                                     .then(() => {
                                       setOffset(0);
                                       loadKeys(selectedBucket, keySearch, 0);

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useConnection } from '../contexts/ConnectionContext';
+import { apiClient } from '../api/client';
 import { Plus, Trash2, Eye, Eraser, X, List, Box, Search, BarChart2, RefreshCcw } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
@@ -83,8 +84,7 @@ const JetStream: React.FC = () => {
     if (!activeConnection) return;
     setLoading(true);
     try {
-      const res = await fetch(`/api/connections/${activeConnection.id}/streams`);
-      const data = await res.json();
+      const data = await apiClient.listStreams(activeConnection.id);
       setStreams(data || []);
     } catch (err) {
       console.error(err);
@@ -122,19 +122,14 @@ const JetStream: React.FC = () => {
     e.preventDefault();
     if (!activeConnection) return;
     try {
-      const res = await fetch(`/api/connections/${activeConnection.id}/streams`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: newStream.name,
-          subjects: newStream.subjects.split(',').map(s => s.trim()),
-          storage: newStream.storage,
-          retention: newStream.retention,
-          max_msgs: Number(newStream.max_msgs),
-          max_bytes: Number(newStream.max_bytes),
-        }),
+      await apiClient.createStream(activeConnection.id, {
+        name: newStream.name,
+        subjects: newStream.subjects.split(',').map(s => s.trim()),
+        storage: newStream.storage,
+        retention: newStream.retention,
+        max_msgs: Number(newStream.max_msgs),
+        max_bytes: Number(newStream.max_bytes),
       });
-      if (!res.ok) throw new Error(await res.text());
       setShowAdd(false);
       loadStreams();
     } catch (err) {
@@ -145,7 +140,7 @@ const JetStream: React.FC = () => {
   const handleDelete = async (name: string) => {
     if (!activeConnection || !confirm(`Delete stream ${name}?`)) return;
     try {
-      await fetch(`/api/connections/${activeConnection.id}/streams/${name}`, { method: 'DELETE' });
+      await apiClient.deleteStream(activeConnection.id, name);
       loadStreams();
     } catch (err) {
       alert(err);
@@ -155,7 +150,7 @@ const JetStream: React.FC = () => {
   const handlePurge = async (name: string) => {
     if (!activeConnection || !confirm(`Purge all messages in stream ${name}?`)) return;
     try {
-      await fetch(`/api/connections/${activeConnection.id}/streams/${name}/purge`, { method: 'POST' });
+      await apiClient.purgeStream(activeConnection.id, name);
       loadStreams();
     } catch (err) {
       alert(err);
@@ -167,8 +162,7 @@ const JetStream: React.FC = () => {
     setViewingStream(stream);
     setLoadingMsgs(true);
     try {
-      const res = await fetch(`/api/connections/${activeConnection.id}/streams/${stream}/messages`);
-      const data = await res.json();
+      const data = await apiClient.getStreamMessages(activeConnection.id, stream);
       setMessages(data || []);
     } catch (err) {
       alert(err);
@@ -186,8 +180,7 @@ const JetStream: React.FC = () => {
     setViewingConsumers(stream);
     setLoadingConsumers(true);
     try {
-      const res = await fetch(`/api/connections/${activeConnection.id}/streams/${stream}/consumers`);
-      const data = await res.json();
+      const data = await apiClient.listConsumers(activeConnection.id, stream);
       setConsumers(data || []);
     } catch (err) {
       alert(err);

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useConnection } from '../contexts/ConnectionContext';
 import { RefreshCcw, Info, Activity } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { apiClient } from '../api/client';
 
 interface ServiceInfo {
   name: string;
@@ -20,8 +21,7 @@ const Services: React.FC = () => {
     if (!activeConnection) return;
     setLoading(true);
     try {
-      const res = await fetch(`/api/connections/${activeConnection.id}/services`);
-      const data = await res.json();
+      const data = await apiClient.listServices(activeConnection.id);
       setServices(data || []);
     } catch (err) {
       console.error(err);

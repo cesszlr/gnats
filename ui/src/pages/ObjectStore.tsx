@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useConnection } from '../contexts/ConnectionContext';
 import { Plus, Trash2, HardDrive, Search, Package, RefreshCcw } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { apiClient } from '../api/client';
+import Modal from '../components/Modal';
 
 interface ObjectInfo {
   name: string;
@@ -52,8 +54,7 @@ const ObjectStore: React.FC = () => {
     if (!activeConnection) return;
     setLoadingBuckets(true);
     try {
-      const res = await fetch(`/api/connections/${activeConnection.id}/object-store`);
-      const data = await res.json();
+      const data = await apiClient.listObjectStores(activeConnection.id);
       setBuckets(data || []);
     } catch (err) {
       console.error(err);
@@ -66,8 +67,7 @@ const ObjectStore: React.FC = () => {
     if (!activeConnection) return;
     setLoadingObjects(true);
     try {
-      const res = await fetch(`/api/connections/${activeConnection.id}/object-store/${bucket}/objects`);
-      const data = await res.json();
+      const data = await apiClient.listObjects(activeConnection.id, bucket);
       setObjects(data || []);
     } catch (err) {
       console.error(err);
@@ -79,8 +79,7 @@ const ObjectStore: React.FC = () => {
   const loadBucketStatus = async (bucket: string) => {
     if (!activeConnection) return;
     try {
-      const res = await fetch(`/api/connections/${activeConnection.id}/object-store/${bucket}/status`);
-      const data = await res.json();
+      const data = await apiClient.getObjectStoreStatus(activeConnection.id, bucket);
       setBucketStatus(data);
     } catch (err) {
       console.error(err);
@@ -91,12 +90,7 @@ const ObjectStore: React.FC = () => {
     e.preventDefault();
     if (!activeConnection) return;
     try {
-      const res = await fetch(`/api/connections/${activeConnection.id}/object-store`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ bucket: newBucketName }),
-      });
-      if (!res.ok) throw new Error(await res.text());
+      await apiClient.createObjectStore(activeConnection.id, { bucket: newBucketName });
       setShowAddBucket(false);
       loadBuckets();
     } catch (err) {
@@ -123,20 +117,23 @@ const ObjectStore: React.FC = () => {
         </div>
       </div>
 
-      {showAddBucket && (
-        <div className="card animate-fade-in" style={{ marginBottom: '2rem' }}>
-          <form onSubmit={handleCreateBucket}>
-            <div className="form-group">
-              <label className="form-label">{t('bucket_name')}</label>
-              <input className="input" value={newBucketName} onChange={e => setNewBucketName(e.target.value)} required />
-            </div>
-            <div style={{ display: 'flex', gap: '1rem' }}>
-              <button type="submit" className="btn btn-primary">{t('create')}</button>
-              <button type="button" className="btn btn-secondary" onClick={() => setShowAddBucket(false)}>{t('cancel')}</button>
-            </div>
-          </form>
-        </div>
-      )}
+      <Modal 
+        isOpen={showAddBucket} 
+        onClose={() => setShowAddBucket(false)} 
+        title={t('new_bucket')}
+        width="500px"
+      >
+        <form onSubmit={handleCreateBucket}>
+          <div className="form-group">
+            <label className="form-label">{t('bucket_name')}</label>
+            <input className="input" value={newBucketName} onChange={e => setNewBucketName(e.target.value)} required />
+          </div>
+          <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', marginTop: '1rem' }}>
+            <button type="button" className="btn btn-secondary" onClick={() => setShowAddBucket(false)}>{t('cancel')}</button>
+            <button type="submit" className="btn btn-primary">{t('create')}</button>
+          </div>
+        </form>
+      </Modal>
 
       <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr', gap: '2rem', flex: 1, overflow: 'hidden' }}>
         <div className="card scroll-area animate-fade-in" style={{ height: '100%', display: 'flex', flexDirection: 'column', padding: '1rem' }}>
@@ -234,7 +231,7 @@ const ObjectStore: React.FC = () => {
                         </div>
                         <button className="btn btn-secondary" style={{ padding: '0.4rem', color: 'var(--error-color)' }} onClick={() => {
                             if (confirm(`Delete object ${obj.name}?`)) {
-                              fetch(`/api/connections/${activeConnection.id}/object-store/${selectedBucket}/objects/${obj.name}`, { method: 'DELETE' })
+                              apiClient.deleteObject(activeConnection.id, selectedBucket, obj.name)
                                 .then(() => loadObjects(selectedBucket));
                             }
                         }}>
