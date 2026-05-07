@@ -29,8 +29,9 @@ async function handleResponse<T>(res: Response): Promise<T> {
 
 export const apiClient = {
   // Connections
-  async listConnections(): Promise<ConnectionConfig[]> {
-    const res = await fetch(`${BASE_URL}/connections`);
+  async listConnections(activeId?: string): Promise<ConnectionConfig[]> {
+    const url = activeId ? `${BASE_URL}/connections?active_id=${activeId}` : `${BASE_URL}/connections`;
+    const res = await fetch(url);
     return handleResponse<ConnectionConfig[]>(res);
   },
 

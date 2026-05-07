@@ -31,6 +31,8 @@ GNATS is a modern, lightweight, and powerful open-source management interface de
     - Monitor Consumer status and progress.
 - 🔑 **KV Store**:
     - Manage Buckets with configuration for TTL, history, and replicas.
+    - **Professional Editor**: Integrated **CodeMirror 6** for high-performance value editing.
+    - **Syntax Highlighting**: Real-time formatting and auto-indentation for JSON/YAML.
     - Easy CRUD operations for Keys.
 - 📦 **Object Store**: Support for bucket management and object lifecycle operations.
 - 🔍 **Service Discovery**: Automatically discover and display services built with the NATS Micro framework.
@@ -47,6 +49,7 @@ GNATS is a modern, lightweight, and powerful open-source management interface de
 
 ### Dashboard
 ![Dashboard](images/dashborad.png)
+![ClientDetails](images/client_details.png)
 
 ### Connection Management
 ![Connections](images/connections.png)

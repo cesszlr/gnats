@@ -14,6 +14,12 @@ import (
 )
 
 func (a *API) ListConnections(w http.ResponseWriter, r *http.Request) {
+	activeID := r.URL.Query().Get("active_id")
+	if activeID != "" {
+		// Active check: ensure the client is connected if it's the active one
+		_, _ = a.manager.EnsureClient(activeID)
+	}
+
 	connections := a.manager.ListClients()
 	a.sendJSON(w, connections)
 }

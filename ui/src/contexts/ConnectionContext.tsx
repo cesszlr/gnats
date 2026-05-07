@@ -7,7 +7,7 @@ interface ConnectionContextType {
   activeConnection: ConnectionConfig | null;
   setActiveConnection: (conn: ConnectionConfig | null) => void;
   connections: ConnectionConfig[];
-  refreshConnections: (newActiveID?: string) => Promise<void>;
+  refreshConnections: (newActiveID?: string, forceCheck?: boolean) => Promise<void>;
   theme: 'light' | 'dark' | 'system';
   setTheme: (theme: 'light' | 'dark' | 'system') => void;
   lang: 'zh' | 'en';
@@ -39,9 +39,10 @@ export const ConnectionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
   }, [lang, i18n]);
 
-  const refreshConnections = async (newActiveID?: string) => {
+  const refreshConnections = async (newActiveID?: string, forceCheck?: boolean) => {
     try {
-      const data = await apiClient.listConnections();
+      const checkID = forceCheck ? (newActiveID || activeConnection?.id) : undefined;
+      const data = await apiClient.listConnections(checkID);
       setConnections(data);
       
       // Update active connection status from the list if it exists

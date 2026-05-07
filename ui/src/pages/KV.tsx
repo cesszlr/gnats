@@ -1,12 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useConnection } from '../contexts/ConnectionContext';
 import { Plus, Trash2, Database, Key, Eye, X, Search, RefreshCcw } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { apiClient } from '../api/client';
 import Modal from '../components/Modal';
+import CodeMirror from '@uiw/react-codemirror';
+import { json } from '@codemirror/lang-json';
+import { yaml } from '@codemirror/lang-yaml';
+import { vscodeDark, vscodeLight } from '@uiw/codemirror-theme-vscode';
 
 const KV: React.FC = () => {
-  const { activeConnection } = useConnection();
+  const { activeConnection, theme } = useConnection();
   const { t } = useTranslation();
   const [buckets, setBuckets] = useState<string[]>([]);
   const [selectedBucket, setSelectedBucket] = useState<string | null>(null);
@@ -28,9 +32,24 @@ const KV: React.FC = () => {
   const [showAddKey, setShowAddKey] = useState(false);
   const [newKey, setNewKey] = useState({ key: '', value: '' });
   const [viewingKey, setViewingKey] = useState<{ key: string, value: string } | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editValue, setEditValue] = useState('');
   const [bucketSearch, setBucketSearch] = useState('');
   const [keySearch, setKeySearch] = useState('');
   const [formatMode, setFormatMode] = useState<'raw' | 'json' | 'yaml'>('raw');
+
+  const extensions = useMemo(() => {
+    if (formatMode === 'json') return [json()];
+    if (formatMode === 'yaml') return [yaml()];
+    return [];
+  }, [formatMode]);
+
+  const cmTheme = useMemo(() => {
+    if (theme === 'dark') return vscodeDark;
+    if (theme === 'light') return vscodeLight;
+    // system theme
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? vscodeDark : vscodeLight;
+  }, [theme]);
 
   useEffect(() => {
     loadBuckets();
@@ -148,6 +167,19 @@ const KV: React.FC = () => {
     try {
       const data = await apiClient.getKVKey(activeConnection.id, bucket, key);
       setViewingKey(data);
+      setEditValue(data.value);
+      setIsEditing(false);
+    } catch (err) {
+      alert(err);
+    }
+  };
+
+  const handleSaveValue = async () => {
+    if (!activeConnection || !selectedBucket || !viewingKey) return;
+    try {
+      await apiClient.putKVKey(activeConnection.id, selectedBucket, viewingKey.key, editValue);
+      setViewingKey({ ...viewingKey, value: editValue });
+      setIsEditing(false);
     } catch (err) {
       alert(err);
     }
@@ -192,9 +224,6 @@ const KV: React.FC = () => {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
         <h1>{t('kv')}</h1>
         <div style={{ display: 'flex', gap: '1rem' }}>
-          <button className="btn btn-secondary" onClick={loadBuckets} disabled={loadingBuckets} title={t('refresh')}>
-            <RefreshCcw size={18} className={loadingBuckets ? 'animate-spin' : ''} />
-          </button>
           <button className="btn btn-primary" onClick={() => setShowAddBucket(true)}>
             <Plus size={18} /> {t('new_bucket')}
           </button>
@@ -246,7 +275,18 @@ const KV: React.FC = () => {
 
       <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr', gap: '2rem', flex: 1, overflow: 'hidden' }}>
         <div className="card scroll-area animate-fade-in" style={{ height: '100%', display: 'flex', flexDirection: 'column', padding: '1rem' }}>
-          <h3 style={{ marginBottom: '1rem' }}>{t('buckets')}</h3>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+            <h3 style={{ margin: 0 }}>{t('buckets')}</h3>
+            <button 
+              className="btn btn-secondary" 
+              style={{ padding: '0.25rem 0.5rem' }} 
+              onClick={loadBuckets} 
+              disabled={loadingBuckets} 
+              title={t('refresh')}
+            >
+              <RefreshCcw size={14} className={loadingBuckets ? 'animate-spin' : ''} />
+            </button>
+          </div>
           <div className="search-input-wrapper" style={{ maxWidth: '100%', marginBottom: '1rem' }}>
             <Search className="search-icon" size={16} />
             <input 
@@ -296,17 +336,46 @@ const KV: React.FC = () => {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                 <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}><Key size={18} /> {viewingKey.key}</h3>
                 <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                  <div className="btn-group">
-                    <button className={`btn ${formatMode === 'raw' ? 'active' : ''}`} onClick={() => setFormatMode('raw')}>{t('raw')}</button>
-                    <button className={`btn ${formatMode === 'json' ? 'active' : ''}`} onClick={() => setFormatMode('json')}>{t('json')}</button>
-                    <button className={`btn ${formatMode === 'yaml' ? 'active' : ''}`} onClick={() => setFormatMode('yaml')}>{t('yaml')}</button>
-                  </div>
+                  {!isEditing && (
+                    <div className="btn-group">
+                      <button className={`btn ${formatMode === 'raw' ? 'active' : ''}`} onClick={() => setFormatMode('raw')}>{t('raw')}</button>
+                      <button className={`btn ${formatMode === 'json' ? 'active' : ''}`} onClick={() => setFormatMode('json')}>{t('json')}</button>
+                      <button className={`btn ${formatMode === 'yaml' ? 'active' : ''}`} onClick={() => setFormatMode('yaml')}>{t('yaml')}</button>
+                    </div>
+                  )}
+                  {isEditing ? (
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <button className="btn btn-secondary" onClick={() => setIsEditing(false)}>{t('cancel')}</button>
+                      <button className="btn btn-primary" onClick={handleSaveValue}>{t('save')}</button>
+                    </div>
+                  ) : (
+                    <button className="btn btn-secondary" onClick={() => setIsEditing(true)}>{t('edit')}</button>
+                  )}
                   <button className="btn btn-secondary" onClick={() => setViewingKey(null)}><X size={18} /></button>
                 </div>
               </div>
-              <pre className="code-block" style={{ maxHeight: '300px' }}>
-                {formatData(viewingKey.value, formatMode)}
-              </pre>
+              {isEditing ? (
+                <div style={{ border: '1px solid var(--border-color)', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
+                  <CodeMirror 
+                    value={editValue} 
+                    height="300px"
+                    theme={cmTheme}
+                    extensions={extensions}
+                    onChange={value => setEditValue(value)}
+                  />
+                </div>
+              ) : (
+                <div style={{ border: '1px solid var(--border-color)', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
+                  <CodeMirror 
+                    value={formatData(viewingKey.value, formatMode)} 
+                    height="300px"
+                    theme={cmTheme}
+                    extensions={extensions}
+                    readOnly={true}
+                    editable={false}
+                  />
+                </div>
+              )}
             </div>
           )}
 
@@ -338,7 +407,15 @@ const KV: React.FC = () => {
                     </div>
                     <div className="form-group">
                       <label className="form-label">{t('value')} (JSON supported)</label>
-                      <textarea className="input" style={{ height: '100px', fontFamily: 'monospace' }} value={newKey.value} onChange={e => setNewKey({ ...newKey, value: e.target.value })} required />
+                      <div style={{ border: '1px solid var(--border-color)', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
+                        <CodeMirror 
+                          value={newKey.value} 
+                          height="200px"
+                          theme={cmTheme}
+                          extensions={[json()]} // Default to JSON for new keys
+                          onChange={value => setNewKey({ ...newKey, value })}
+                        />
+                      </div>
                     </div>
                     <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', marginTop: '1rem' }}>
                       <button type="button" className="btn btn-secondary" onClick={() => setShowAddKey(false)}>{t('cancel')}</button>

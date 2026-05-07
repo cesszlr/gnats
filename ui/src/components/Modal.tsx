@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 
 interface ModalProps {
@@ -26,7 +27,7 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, width =
 
   if (!isOpen) return null;
 
-  return (
+  return createPortal(
     <div className="modal-overlay" onClick={onClose}>
       <div 
         className="modal-content animate-fade-in" 
@@ -43,7 +44,8 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, width =
           {children}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

@@ -11,7 +11,8 @@ const Connections: React.FC = () => {
   const { t } = useTranslation();
 
   React.useEffect(() => {
-    const interval = setInterval(() => refreshConnections(), 5000);
+    refreshConnections(undefined, true);
+    const interval = setInterval(() => refreshConnections(), 2000);
     return () => clearInterval(interval);
   }, [refreshConnections]);
 

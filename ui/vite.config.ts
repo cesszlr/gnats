@@ -12,6 +12,7 @@ export default defineConfig({
             if (id.includes('recharts')) return 'vendor-charts';
             if (id.includes('lucide-react')) return 'vendor-icons';
             if (id.includes('react')) return 'vendor-react';
+            if (id.includes('codemirror') || id.includes('@uiw')) return 'vendor-editor';
             return 'vendor';
           }
         }
