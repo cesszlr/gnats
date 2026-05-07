@@ -53,6 +53,11 @@ func (a *API) UpdateConnection(w http.ResponseWriter, r *http.Request) {
 		cfg.ID = id
 	}
 
+	// If ID has changed, delete the old one
+	if id != "" && id != cfg.ID {
+		a.manager.DeleteConfig(id)
+	}
+
 	a.manager.UpdateConfig(cfg)
 	a.sendJSON(w, nil)
 }
@@ -118,11 +123,13 @@ func (a *API) GetStats(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if monitorURL != "" {
-		monitorURL = strings.TrimSuffix(monitorURL, "/") + "/accstatz?unused=true"
+		baseURL := strings.TrimSuffix(monitorURL, "/")
+
+		// 1. Fetch Account Stats
 		var monitorData struct {
 			AccountStatz []map[string]interface{} `json:"account_statz"`
 		}
-		if err := fetchJSON(monitorURL, &monitorData); err == nil {
+		if err := fetchJSON(baseURL+"/accstatz?unused=true", &monitorData); err == nil {
 			// Sort accounts by name for stability
 			sort.Slice(monitorData.AccountStatz, func(i, j int) bool {
 				nameI, _ := monitorData.AccountStatz[i]["acc"].(string)
@@ -132,9 +139,48 @@ func (a *API) GetStats(w http.ResponseWriter, r *http.Request) {
 			stats["monitoring"] = monitorData
 		} else {
 			stats["monitoring_error"] = err.Error()
-			stats["monitoring_url"] = monitorURL
 		}
+
+		stats["monitoring_url"] = baseURL
 	}
 
 	a.sendJSON(w, stats)
+}
+
+func (a *API) GetMonitoringConnections(w http.ResponseWriter, r *http.Request) {
+	client := a.getClient(r)
+
+	// Monitoring data
+	monitorURL := client.Config.MonitoringURL
+	if monitorURL == "" {
+		// Try to derive from NATS URL
+		if u, err := url.Parse(client.Config.URL); err == nil {
+			host := u.Hostname()
+			if host == "" {
+				host = "localhost"
+			}
+			monitorURL = fmt.Sprintf("http://%s:8222", host)
+		}
+	}
+
+	if monitorURL == "" {
+		a.sendJSON(w, map[string]interface{}{"connections": []interface{}{}})
+		return
+	}
+
+	baseURL := strings.TrimSuffix(monitorURL, "/")
+	sortBy := r.URL.Query().Get("sort")
+	if sortBy == "" || sortBy == "msgs_pending" {
+		sortBy = "pending" // Default is pending bytes
+	}
+
+	var connzData struct {
+		Conns []map[string]interface{} `json:"connections"`
+	}
+	// Sort by selected parameter descending, limit to 10
+	if err := fetchJSON(fmt.Sprintf("%s/connz?sort=%s&limit=10", baseURL, sortBy), &connzData); err == nil {
+		a.sendJSON(w, map[string]interface{}{"connections": connzData.Conns})
+	} else {
+		a.sendError(w, err.Error(), http.StatusInternalServerError)
+	}
 }

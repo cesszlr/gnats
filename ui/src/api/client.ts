@@ -66,8 +66,15 @@ export const apiClient = {
     return handleResponse<void>(res);
   },
 
-  async getStats(id: string): Promise<any> {
-    const res = await fetch(`${BASE_URL}/connections/${id}/stats`);
+  async getStats(id: string, sortBy?: string): Promise<any> {
+    const url = sortBy ? `${BASE_URL}/connections/${id}/stats?sort=${sortBy}` : `${BASE_URL}/connections/${id}/stats`;
+    const res = await fetch(url);
+    return handleResponse<any>(res);
+  },
+
+  async getMonitoringConnections(id: string, sortBy?: string): Promise<any> {
+    const url = sortBy ? `${BASE_URL}/connections/${id}/monitoring/connections?sort=${sortBy}` : `${BASE_URL}/connections/${id}/monitoring/connections`;
+    const res = await fetch(url);
     return handleResponse<any>(res);
   },
 

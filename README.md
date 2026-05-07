@@ -5,7 +5,7 @@
 GNATS is a modern, lightweight, and powerful open-source management interface designed for [NATS.io](https://nats.io). It provides an intuitive Web UI to help developers and operators easily manage NATS clusters, monitor real-time messages, configure JetStream, and operate KV stores.
 
 ![License](https://img.shields.io/badge/license-Apache--2.0-green.svg)
-![Go Version](https://img.shields.io/badge/Go-1.23+-00ADD8.svg?style=flat&logo=go)
+![Go Version](https://img.shields.io/badge/Go-1.26-00ADD8.svg?style=flat&logo=go)
 ![React Version](https://img.shields.io/badge/React-19-61DAFB.svg?style=flat&logo=react)
 
 ---
@@ -17,9 +17,10 @@ GNATS is a modern, lightweight, and powerful open-source management interface de
     - **Connection Editing**: Easily update existing configurations via a unified Modal interface.
     - **Advanced TLS**: Support for both file paths and direct PEM content pasting.
 - 📊 **Account-Wide Monitoring**: 
-    - **NATS Monitoring Integration**: Direct integration with the NATS `/accstatz` endpoint (port 8222) for precise metrics.
-    - **Multi-Account Selection**: Seamlessly switch between different NATS Accounts ($G, $SYS, etc.) to monitor isolated traffic.
-    - **Real-time Statistics**: Accurate throughput charts (msgs/s), active connections, and slow consumer alerts with high-fidelity animations.
+    - **NATS Monitoring Integration**: Direct integration with NATS `/accstatz` and `/connz` endpoints for precise metrics.
+    - **Multi-Account Selection**: Seamlessly switch between different NATS Accounts to monitor isolated traffic.
+    - **Active Client Tracking**: Monitor Top 10 stressed clients with server-side sorting (by pending bytes, sent/received messages).
+    - **Real-time Statistics**: Accurate throughput charts (msgs/s) and high-fidelity animations.
 - 🚀 **Core Messaging (Pub/Sub)**: 
     - Subscribe to subjects in real-time and view incoming messages.
     - Publish messages with custom Payloads, Headers, and Reply-To addresses.
@@ -37,6 +38,7 @@ GNATS is a modern, lightweight, and powerful open-source management interface de
 - 🌓 **Premium Experience**:
     - **Dark/Light Mode** automatic switching.
     - **Multi-language Support**: Full English and Chinese interface localization.
+    - **Rich Tooltips & Modals**: Detailed connection info with network latency (RTT) and throughput analysis.
     - **Responsive Design**: Adapts to various screen sizes.
 
 ---
@@ -66,24 +68,6 @@ GNATS can be configured using environment variables:
 | `PORT` | The port the Web UI will listen on. | `8080` |
 | `CONNECTIONS_FILE` | Path to save/load connection configurations. | `connections.json` |
 | `DEBUG` | If set to `true`, serves static files from `ui/dist` instead of embedded files. | `false` |
-
----
-
-## 🗺️ Roadmap
-
-### 3. Developer Experience (DX)
-- **Message Snippets**: Save and reuse common message templates.
-- **Schema Validation**: Integrate JSON Schema validation for message payloads.
-- **Message Replay**: One-click replay of historical messages from Streams.
-
-### 4. Advanced Management
-- **Dynamic Stream Editing**: Update Stream configurations without deletion (e.g., adding subjects).
-- **Bulk Operations**: Batch purge streams or delete keys in KV stores.
-- **Export/Import**: Backup and migrate connection configurations easily.
-
-### 5. Polish & Interaction
-- **Keyboard Shortcuts**: `Ctrl+Enter` to publish, `/` to focus search.
-- **Enhanced Search**: Full-text search within Stream message history.
 
 ---
 
@@ -121,11 +105,11 @@ The fastest way to get started. The image is extremely small as it only contains
 
 ## 🛠 Tech Stack
 
-- **Backend**: [Go](https://golang.org/) + [chi](https://github.com/go-chi/chi) (High-performance routing) + [nats.go](https://github.com/nats-io/nats.go)
-- **Frontend**: [React](https://react.dev/) + [TypeScript](https://www.typescriptlang.org/) + [Vite](https://vitejs.dev/)
-- **UI Components**: [Lucide Icons](https://lucide.dev/) + [Recharts](https://recharts.org/) + Native CSS Variables
+- **Backend**: [Go 1.26](https://golang.org/) + [chi](https://github.com/go-chi/chi) (RESTful API) + [nats.go](https://github.com/nats-io/nats.go)
+- **Frontend**: [React 19](https://react.dev/) + [TypeScript](https://www.typescriptlang.org/) + [Vite 6](https://vitejs.dev/)
+- **Visuals**: [Lucide Icons](https://lucide.dev/) + [Recharts](https://recharts.org/) + Vanilla CSS
 - **i18n**: [i18next](https://www.i18next.com/)
-- **Deployment**: `go:embed` + Docker Multi-stage Build
+- **Deployment**: `go:embed` + Docker Multi-stage Build (Single Binary)
 
 ---
 

@@ -88,8 +88,9 @@ func (m *Manager) loadConfigs() {
 
 func (m *Manager) saveConfigs() {
 	var configs []ConnectionConfig
-	for _, cfg := range m.configs {
-		// Don't save transient status
+	for id, cfg := range m.configs {
+		// Ensure ID matches key and clear transient status
+		cfg.ID = id
 		cfg.Status = ""
 		configs = append(configs, cfg)
 	}
@@ -116,7 +117,7 @@ func (m *Manager) Connect(cfg ConnectionConfig) (*Client, error) {
 	}
 
 	opts := []nats.Option{
-		nats.Name("NATS Web UI"),
+		nats.Name("GNATS"),
 	}
 
 	if cfg.Token != "" {
@@ -237,13 +238,16 @@ func (m *Manager) DeleteConfig(id string) error {
 
 func (m *Manager) EnsureClient(id string) (*Client, error) {
 	m.mu.RLock()
-	// Check if already active
+	// Check if already active and still connected
 	if client, ok := m.clients[id]; ok {
-		m.mu.RUnlock()
-		return client, nil
+		status := client.Conn.Status()
+		if status == nats.CONNECTED || status == nats.RECONNECTING || status == nats.CONNECTING {
+			m.mu.RUnlock()
+			return client, nil
+		}
 	}
 
-	// If not active, try to auto-connect using saved config
+	// If not active or disconnected, try to auto-connect using saved config
 	cfg, ok := m.configs[id]
 	m.mu.RUnlock()
 
@@ -278,9 +282,13 @@ func (m *Manager) ListClients() []ConnectionConfig {
 	defer m.mu.RUnlock()
 
 	result := make([]ConnectionConfig, 0, len(m.configs))
-	for _, cfg := range m.configs {
-		if client, ok := m.clients[cfg.ID]; ok {
-			cfg.Status = strings.ToUpper(client.Conn.Status().String())
+	for id, cfg := range m.configs {
+		// Ensure the ID in the struct matches the map key
+		cfg.ID = id
+
+		if client, ok := m.clients[id]; ok {
+			status := strings.ToUpper(client.Conn.Status().String())
+			cfg.Status = status
 		} else {
 			cfg.Status = "DISCONNECTED"
 		}
