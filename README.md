@@ -116,6 +116,14 @@ The fastest way to get started. The image is extremely small as it only contains
 
 ---
 
+## 🗺️ Roadmap
+
+- [ ] **Request-Reply Debugging Panel**: A dedicated interface for publishing messages and awaiting/rendering the response synchronously.
+- [ ] **Consumer Lifecycle Management**: Graphical creation, detailed configuration, and operation of JetStream Consumers.
+- [ ] **Key History & Rollback**: View historical revisions of KV keys and easily rollback to past versions.
+
+---
+
 ## 📄 License
 
 This project is licensed under the [Apache License 2.0](LICENSE).
