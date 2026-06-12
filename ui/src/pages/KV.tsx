@@ -1,17 +1,20 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useConnection } from '../contexts/ConnectionContext';
-import { Plus, Trash2, Database, Key, Eye, X, Search, RefreshCcw } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { useToast } from '../components/Toast';
+import { Plus, RefreshCcw, Search, Database, Key, X, Eye, Trash2 } from 'lucide-react';
 import { apiClient } from '../api/client';
-import Modal from '../components/Modal';
 import CodeMirror from '@uiw/react-codemirror';
 import { json } from '@codemirror/lang-json';
 import { yaml } from '@codemirror/lang-yaml';
 import { vscodeDark, vscodeLight } from '@uiw/codemirror-theme-vscode';
+import { AddBucketModal } from '../components/AddBucketModal';
+import { PutKeyModal } from '../components/PutKeyModal';
 
 const KV: React.FC = () => {
   const { activeConnection, theme } = useConnection();
   const { t } = useTranslation();
+  const { showToast } = useToast();
   const [buckets, setBuckets] = useState<string[]>([]);
   const [selectedBucket, setSelectedBucket] = useState<string | null>(null);
   const [keys, setKeys] = useState<string[]>([]);
@@ -22,15 +25,7 @@ const KV: React.FC = () => {
   const [loadingBuckets, setLoadingBuckets] = useState(false);
   const [loadingKeys, setLoadingKeys] = useState(false);
   const [showAddBucket, setShowAddBucket] = useState(false);
-  const [newBucket, setNewBucket] = useState({ 
-    bucket: '', 
-    history: 1, 
-    ttl: 0, 
-    storage: 'file', 
-    replicas: 1 
-  });
   const [showAddKey, setShowAddKey] = useState(false);
-  const [newKey, setNewKey] = useState({ key: '', value: '' });
   const [viewingKey, setViewingKey] = useState<{ key: string, value: string } | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState('');
@@ -47,7 +42,6 @@ const KV: React.FC = () => {
   const cmTheme = useMemo(() => {
     if (theme === 'dark') return vscodeDark;
     if (theme === 'light') return vscodeLight;
-    // system theme
     return window.matchMedia('(prefers-color-scheme: dark)').matches ? vscodeDark : vscodeLight;
   }, [theme]);
 
@@ -95,8 +89,9 @@ const KV: React.FC = () => {
     try {
       const data = await apiClient.listKV(activeConnection.id);
       setBuckets(data || []);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      showToast(err.message || String(err), 'error');
     } finally {
       setLoadingBuckets(false);
     }
@@ -113,8 +108,9 @@ const KV: React.FC = () => {
         setKeys(prev => [...prev, ...(data.keys || [])]);
       }
       setHasMore(data.hasMore);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      showToast(err.message || String(err), 'error');
     } finally {
       setLoadingKeys(false);
     }
@@ -169,8 +165,8 @@ const KV: React.FC = () => {
       setViewingKey(data);
       setEditValue(data.value);
       setIsEditing(false);
-    } catch (err) {
-      alert(err);
+    } catch (err: any) {
+      showToast(err.message || String(err), 'error');
     }
   };
 
@@ -180,38 +176,39 @@ const KV: React.FC = () => {
       await apiClient.putKVKey(activeConnection.id, selectedBucket, viewingKey.key, editValue);
       setViewingKey({ ...viewingKey, value: editValue });
       setIsEditing(false);
-    } catch (err) {
-      alert(err);
+      showToast(t('save_success') || 'Saved successfully', 'success');
+    } catch (err: any) {
+      showToast(err.message || String(err), 'error');
     }
   };
 
-  const handleCreateBucket = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleCreateBucket = async (bucketData: any) => {
     if (!activeConnection) return;
     try {
       await apiClient.createKV(activeConnection.id, {
-        bucket: newBucket.bucket,
-        history: Number(newBucket.history),
-        ttl: Number(newBucket.ttl) * 1e9, // Convert seconds to nanoseconds
-        storage: newBucket.storage,
-        replicas: Number(newBucket.replicas),
+        bucket: bucketData.bucket,
+        history: Number(bucketData.history),
+        ttl: Number(bucketData.ttl) * 1e9, // Convert seconds to nanoseconds
+        storage: bucketData.storage,
+        replicas: Number(bucketData.replicas),
       });
       setShowAddBucket(false);
       loadBuckets();
-    } catch (err) {
-      alert(err);
+      showToast(t('bucket_create_success') || 'Bucket created successfully', 'success');
+    } catch (err: any) {
+      showToast(err.message || String(err), 'error');
     }
   };
 
-  const handlePutKey = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handlePutKey = async (key: string, value: string) => {
     if (!activeConnection || !selectedBucket) return;
     try {
-      await apiClient.putKVKey(activeConnection.id, selectedBucket, newKey.key, newKey.value);
+      await apiClient.putKVKey(activeConnection.id, selectedBucket, key, value);
       setShowAddKey(false);
       loadKeys(selectedBucket);
-    } catch (err) {
-      alert(err);
+      showToast(t('key_put_success') || 'Key updated successfully', 'success');
+    } catch (err: any) {
+      showToast(err.message || String(err), 'error');
     }
   };
 
@@ -230,48 +227,12 @@ const KV: React.FC = () => {
         </div>
       </div>
 
-      <Modal 
-        isOpen={showAddBucket} 
-        onClose={() => setShowAddBucket(false)} 
-        title={t('new_bucket')}
-        width="600px"
-      >
-        <form onSubmit={handleCreateBucket}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-            <div className="form-group">
-              <label className="form-label">{t('bucket_name')}</label>
-              <input className="input" value={newBucket.bucket} onChange={e => setNewBucket({ ...newBucket, bucket: e.target.value })} required />
-            </div>
-            <div className="form-group">
-              <label className="form-label">{t('history')}</label>
-              <input type="number" className="input" value={newBucket.history} onChange={e => setNewBucket({ ...newBucket, history: parseInt(e.target.value) })} min={1} max={64} />
-            </div>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
-            <div className="form-group">
-              <label className="form-label">{t('ttl')} ({t('optional')})</label>
-              <input type="number" className="input" value={newBucket.ttl} onChange={e => setNewBucket({ ...newBucket, ttl: parseInt(e.target.value) })} min={0} />
-            </div>
-            <div className="form-group">
-              <label className="form-label">{t('storage')}</label>
-              <select className="input" value={newBucket.storage} onChange={e => setNewBucket({ ...newBucket, storage: e.target.value })}>
-                <option value="file">File</option>
-                <option value="memory">Memory</option>
-              </select>
-            </div>
-            <div className="form-group">
-              <label className="form-label">{t('replicas')}</label>
-              <input type="number" className="input" value={newBucket.replicas} onChange={e => setNewBucket({ ...newBucket, replicas: parseInt(e.target.value) })} min={1} max={5} />
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', marginTop: '1rem' }}>
-            <button type="button" className="btn btn-secondary" onClick={() => setShowAddBucket(false)}>{t('cancel')}</button>
-            <button type="submit" className="btn btn-primary">{t('create')}</button>
-          </div>
-        </form>
-      </Modal>
+      <AddBucketModal
+        isOpen={showAddBucket}
+        onClose={() => setShowAddBucket(false)}
+        onCreate={handleCreateBucket}
+        t={t}
+      />
 
       <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr', gap: '2rem', flex: 1, overflow: 'hidden' }}>
         <div className="card scroll-area animate-fade-in" style={{ height: '100%', display: 'flex', flexDirection: 'column', padding: '1rem' }}>
@@ -394,35 +355,13 @@ const KV: React.FC = () => {
                   </div>
                 </div>
 
-                <Modal 
-                  isOpen={showAddKey} 
-                  onClose={() => setShowAddKey(false)} 
-                  title={t('put_key')}
-                  width="600px"
-                >
-                  <form onSubmit={handlePutKey}>
-                    <div className="form-group">
-                      <label className="form-label">{t('key')}</label>
-                      <input className="input" value={newKey.key} onChange={e => setNewKey({ ...newKey, key: e.target.value })} placeholder="e.g. config.timeout" required />
-                    </div>
-                    <div className="form-group">
-                      <label className="form-label">{t('value')} (JSON supported)</label>
-                      <div style={{ border: '1px solid var(--border-color)', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
-                        <CodeMirror 
-                          value={newKey.value} 
-                          height="200px"
-                          theme={cmTheme}
-                          extensions={[json()]} // Default to JSON for new keys
-                          onChange={value => setNewKey({ ...newKey, value })}
-                        />
-                      </div>
-                    </div>
-                    <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', marginTop: '1rem' }}>
-                      <button type="button" className="btn btn-secondary" onClick={() => setShowAddKey(false)}>{t('cancel')}</button>
-                      <button type="submit" className="btn btn-primary">{t('create')}</button>
-                    </div>
-                  </form>
-                </Modal>
+                <PutKeyModal
+                  isOpen={showAddKey}
+                  onClose={() => setShowAddKey(false)}
+                  onSubmit={handlePutKey}
+                  t={t}
+                  cmTheme={cmTheme}
+                />
 
                 {bucketStatus && (
                   <div style={{ display: 'flex', gap: '1.5rem', marginBottom: '1rem', fontSize: '0.75rem', color: 'var(--text-secondary)', flexShrink: 0 }}>

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useConnection } from '../contexts/ConnectionContext';
+import { useToast } from '../components/Toast';
 import { apiClient } from '../api/client';
 import type { ConnectionConfig } from '../api/client';
 import { Plus, Search, Trash2, FileText, FileCode, Edit2 } from 'lucide-react';
@@ -9,6 +10,7 @@ import Modal from '../components/Modal';
 const Connections: React.FC = () => {
   const { connections, refreshConnections } = useConnection();
   const { t } = useTranslation();
+  const { showToast } = useToast();
 
   React.useEffect(() => {
     refreshConnections(undefined, true);
@@ -64,19 +66,23 @@ const Connections: React.FC = () => {
         finalConfig.key_file = '';
       }
 
+      let finalActiveId = newConfig.id;
       if (editingId) {
         await apiClient.updateConnection(editingId, finalConfig);
+        finalActiveId = editingId;
       } else {
         const id = newConfig.name.toLowerCase().replace(/\s+/g, '-');
         finalConfig.id = id;
+        finalActiveId = id;
         await apiClient.connect(finalConfig);
       }
       
       setShowAdd(false);
       setEditingId(null);
-      await refreshConnections(newConfig.id);
-    } catch (err) {
-      alert(err);
+      await refreshConnections(finalActiveId);
+      showToast(editingId ? t('save_success') || 'Saved successfully' : t('connect_success') || 'Connected successfully', 'success');
+    } catch (err: any) {
+      showToast(err.message || String(err), 'error');
     } finally {
       setLoading(false);
     }
@@ -106,8 +112,9 @@ const Connections: React.FC = () => {
     try {
       await apiClient.disconnect(id);
       await refreshConnections();
-    } catch (err) {
-      alert(err);
+      showToast(t('disconnect_success') || 'Disconnected successfully', 'success');
+    } catch (err: any) {
+      showToast(err.message || String(err), 'error');
     }
   };
 
@@ -116,8 +123,9 @@ const Connections: React.FC = () => {
     try {
       await apiClient.forget(id);
       await refreshConnections();
-    } catch (err) {
-      alert(err);
+      showToast(t('delete_success') || 'Deleted successfully', 'success');
+    } catch (err: any) {
+      showToast(err.message || String(err), 'error');
     }
   };
 
@@ -126,8 +134,9 @@ const Connections: React.FC = () => {
     try {
       await apiClient.connect(cfg);
       await refreshConnections(cfg.id);
-    } catch (err) {
-      alert(err);
+      showToast(t('connect_success') || 'Connected successfully', 'success');
+    } catch (err: any) {
+      showToast(err.message || String(err), 'error');
     } finally {
       setLoading(false);
     }

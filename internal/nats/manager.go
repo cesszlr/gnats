@@ -98,38 +98,14 @@ func (m *Manager) saveConfigs() {
 	_ = os.WriteFile(getConfigPath(), data, 0644)
 }
 
-func (m *Manager) Connect(cfg ConnectionConfig) (*Client, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	// Disconnect ALL other clients first (Single Active Connection Rule)
-	for id, client := range m.clients {
-		if id != cfg.ID {
-			client.Conn.Close()
-			delete(m.clients, id)
-		}
-	}
-
-	// If the current one is already connected, close it first to refresh settings
-	if client, ok := m.clients[cfg.ID]; ok {
-		client.Conn.Close()
-		delete(m.clients, cfg.ID)
-	}
-
-	opts := []nats.Option{
-		nats.Name("GNATS"),
-	}
-
-	if cfg.Token != "" {
-		opts = append(opts, nats.Token(cfg.Token))
-	} else if cfg.User != "" && cfg.Password != "" {
-		opts = append(opts, nats.UserInfo(cfg.User, cfg.Password))
-	}
-
-	// TLS Setup
+func buildTLSConfig(cfg ConnectionConfig) (*tls.Config, error) {
 	useTLS := cfg.Insecure || cfg.CAContent != "" || cfg.CAFile != "" ||
 		cfg.CertContent != "" || cfg.CertFile != "" ||
 		strings.HasPrefix(cfg.URL, "tls://")
+
+	if !useTLS {
+		return nil, nil
+	}
 
 	tlsConfig := &tls.Config{
 		InsecureSkipVerify: cfg.Insecure,
@@ -175,7 +151,43 @@ func (m *Manager) Connect(cfg ConnectionConfig) (*Client, error) {
 		}
 	}
 
-	if useTLS {
+	return tlsConfig, nil
+}
+
+func (m *Manager) Connect(cfg ConnectionConfig) (*Client, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	// Disconnect ALL other clients first (Single Active Connection Rule)
+	for id, client := range m.clients {
+		if id != cfg.ID {
+			client.Conn.Close()
+			delete(m.clients, id)
+		}
+	}
+
+	// If the current one is already connected, close it first to refresh settings
+	if client, ok := m.clients[cfg.ID]; ok {
+		client.Conn.Close()
+		delete(m.clients, cfg.ID)
+	}
+
+	opts := []nats.Option{
+		nats.Name("GNATS"),
+	}
+
+	if cfg.Token != "" {
+		opts = append(opts, nats.Token(cfg.Token))
+	} else if cfg.User != "" && cfg.Password != "" {
+		opts = append(opts, nats.UserInfo(cfg.User, cfg.Password))
+	}
+
+	// TLS Setup
+	tlsConfig, err := buildTLSConfig(cfg)
+	if err != nil {
+		return nil, err
+	}
+	if tlsConfig != nil {
 		opts = append(opts, nats.Secure(tlsConfig))
 	}
 

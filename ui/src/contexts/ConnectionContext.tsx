@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import type { ConnectionConfig } from '../api/client';
 import { apiClient } from '../api/client';
 import { useTranslation } from 'react-i18next';
@@ -19,6 +19,12 @@ const ConnectionContext = createContext<ConnectionContextType | undefined>(undef
 export const ConnectionProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { i18n } = useTranslation();
   const [activeConnection, setActiveConnection] = useState<ConnectionConfig | null>(null);
+  const activeConnectionRef = useRef<ConnectionConfig | null>(activeConnection);
+
+  useEffect(() => {
+    activeConnectionRef.current = activeConnection;
+  }, [activeConnection]);
+
   const [connections, setConnections] = useState<ConnectionConfig[]>([]);
   const [theme, setTheme] = useState<'light' | 'dark' | 'system'>(() => (localStorage.getItem('gnats-theme') as any) || 'system');
   const [lang, setLang] = useState<'zh' | 'en'>(() => {
@@ -39,16 +45,17 @@ export const ConnectionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
   }, [lang, i18n]);
 
-  const refreshConnections = async (newActiveID?: string, forceCheck?: boolean) => {
+  const refreshConnections = useCallback(async (newActiveID?: string, forceCheck?: boolean) => {
     try {
-      const checkID = forceCheck ? (newActiveID || activeConnection?.id) : undefined;
+      const currentActive = activeConnectionRef.current;
+      const checkID = forceCheck ? (newActiveID || currentActive?.id) : undefined;
       const data = await apiClient.listConnections(checkID);
       setConnections(data);
       
       // Update active connection status from the list if it exists
-      if (activeConnection) {
-        const current = data.find(c => c.id === activeConnection.id);
-        if (current && JSON.stringify(current) !== JSON.stringify(activeConnection)) {
+      if (currentActive) {
+        const current = data.find(c => c.id === currentActive.id);
+        if (current && JSON.stringify(current) !== JSON.stringify(currentActive)) {
           setActiveConnection(current);
         }
       }
@@ -56,15 +63,15 @@ export const ConnectionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       if (newActiveID) {
         const found = data.find(c => c.id === newActiveID);
         if (found) setActiveConnection(found);
-      } else if (activeConnection && !data.find(c => c.id === activeConnection.id)) {
+      } else if (currentActive && !data.find(c => c.id === currentActive.id)) {
         setActiveConnection(data.length > 0 ? data[0] : null);
-      } else if (!activeConnection && data.length > 0) {
+      } else if (!currentActive && data.length > 0) {
         setActiveConnection(data[0]);
       }
     } catch (err) {
       console.error(err);
     }
-  };
+  }, []);
 
   useEffect(() => {
     refreshConnections();
