@@ -21,9 +21,13 @@ GNATS is a modern, lightweight, and powerful open-source management interface de
     - **Multi-Account Selection**: Seamlessly switch between different NATS Accounts to monitor isolated traffic.
     - **Active Client Tracking**: Monitor Top 10 stressed clients with server-side sorting (by pending bytes, sent/received messages).
     - **Real-time Statistics**: Accurate throughput charts (msgs/s) and high-fidelity animations.
-- 🚀 **Core Messaging (Pub/Sub)**: 
+- 🚀 **Core Messaging (Pub/Sub & Request-Reply)**: 
     - Subscribe to subjects in real-time and view incoming messages.
+    - Display advanced message details (auto-generated or custom `Reply-To` inbox, NATS headers as tags).
     - Publish messages with custom Payloads, Headers, and Reply-To addresses.
+    - **Request-Reply Debug Panel**: Dedicated tab to send requests with timeout options and custom Reply-To subjects.
+    - **Cancel Request**: Instant client-side aborting (via `AbortController`) that cancels context in the backend to safely release NATS resources.
+    - **Advanced Subscription Options**: Configure Queue Groups, Max Messages (auto stop & unsubscribe), and Pending Limits (slow consumer protection) visually.
 - 🌊 **JetStream Management**:
     - **Visual Distribution**: Charts showing message volume across top streams.
     - Create, view, purge, and delete Streams.
@@ -55,7 +59,8 @@ GNATS is a modern, lightweight, and powerful open-source management interface de
 ![Connections](images/connections.png)
 
 ### Core Pub/Sub
-![Publish/Subscribe](images/pub.png)
+![Publish/Subscribe](images/pub-1.png)
+![Request/Reply](images/pub-2.png)
 
 ### KV Store
 ![KV Store](images/kv.png)
@@ -118,7 +123,7 @@ The fastest way to get started. The image is extremely small as it only contains
 
 ## 🗺️ Roadmap
 
-- [ ] **Request-Reply Debugging Panel**: A dedicated interface for publishing messages and awaiting/rendering the response synchronously.
+- [x] **Request-Reply Debugging Panel**: A dedicated interface for publishing messages and awaiting/rendering the response synchronously, with client-side cancellation.
 - [ ] **Consumer Lifecycle Management**: Graphical creation, detailed configuration, and operation of JetStream Consumers.
 - [ ] **Key History & Rollback**: View historical revisions of KV keys and easily rollback to past versions.
 
