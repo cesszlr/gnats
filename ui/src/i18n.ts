@@ -142,7 +142,24 @@ const resources = {
       "tls_mode_content": "Paste Content (PEM)",
       "tls_ca_hint": "Paste the Root CA certificate content (starts with -----BEGIN CERTIFICATE-----)",
       "tls_cert_hint": "Paste the Client certificate content",
-      "tls_key_hint": "Paste the Private Key content (starts with -----BEGIN PRIVATE KEY-----)"
+      "tls_key_hint": "Paste the Private Key content (starts with -----BEGIN PRIVATE KEY-----)",
+      "request_reply": "Request-Reply",
+      "send_request": "Send Request",
+      "waiting_response": "Waiting for response...",
+      "no_response_yet": "No response received yet.",
+      "latency": "Latency",
+      "response": "Response",
+      "advanced_options": "Advanced Options",
+      "queue_group": "Queue Group",
+      "queue_group_hint": "e.g. workers (optional)",
+      "max_messages": "Max Messages",
+      "max_messages_hint": "Auto stop after N messages (optional)",
+      "pending_limit": "Pending Limit",
+      "pending_limit_hint": "Slow consumer limit (optional)",
+      "custom_reply_to": "Custom Reply To",
+      "custom_reply_to_hint": "e.g. response.topic (optional)",
+      "cancel_request": "Cancel Request",
+      "request_cancelled": "Request cancelled"
     }
   },
   zh: {
@@ -284,7 +301,24 @@ const resources = {
       "tls_mode_content": "直接粘贴内容 (PEM)",
       "tls_ca_hint": "请粘贴根证书 (Root CA) 的内容（通常以 -----BEGIN CERTIFICATE----- 开头）",
       "tls_cert_hint": "请粘贴客户端证书 (Client Cert) 的内容",
-      "tls_key_hint": "请粘贴私钥 (Private Key) 的内容（通常以 -----BEGIN PRIVATE KEY----- 开头）"
+      "tls_key_hint": "请粘贴私钥 (Private Key) 的内容（通常以 -----BEGIN PRIVATE KEY----- 开头）",
+      "request_reply": "请求-响应 (Req/Rep)",
+      "send_request": "发送请求",
+      "waiting_response": "正在等待响应中...",
+      "no_response_yet": "暂无收到任何响应。",
+      "latency": "时延",
+      "response": "响应结果",
+      "advanced_options": "高级选项",
+      "queue_group": "队列组 (Queue Group)",
+      "queue_group_hint": "例如 workers (可选)",
+      "max_messages": "最大消息数 (Max Messages)",
+      "max_messages_hint": "收到 N 条消息后自动停止 (可选)",
+      "pending_limit": "积压消息上限 (Pending Limit)",
+      "pending_limit_hint": "防止内存暴涨的慢消费者限额 (可选)",
+      "custom_reply_to": "自定义回复主题 (Reply-To)",
+      "custom_reply_to_hint": "输入接收响应的主题，不填则由 NATS 自动分配",
+      "cancel_request": "取消请求",
+      "request_cancelled": "请求已取消"
     }
   }
 };

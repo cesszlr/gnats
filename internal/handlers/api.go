@@ -93,6 +93,7 @@ func (a *API) Routes() chi.Router {
 		r.Delete("/connections/{id}", a.Disconnect)
 		r.Delete("/connections/{id}/forget", a.DeleteConnection)
 		r.Post("/connections/{id}/publish", a.Publish)
+		r.Post("/connections/{id}/request", a.Request)
 
 		r.Get("/connections/{id}/streams", a.ListStreams)
 		r.Post("/connections/{id}/streams", a.CreateStream)

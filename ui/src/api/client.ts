@@ -88,6 +88,16 @@ export const apiClient = {
     return handleResponse<void>(res);
   },
 
+  async request(id: string, req: any, signal?: AbortSignal): Promise<any> {
+    const res = await fetch(`${BASE_URL}/connections/${id}/request`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(req),
+      signal
+    });
+    return handleResponse<any>(res);
+  },
+
   // JetStream
   async listStreams(id: string): Promise<any[]> {
     const res = await fetch(`${BASE_URL}/connections/${id}/streams`);

@@ -3,6 +3,8 @@ package handlers
 import (
 	"log"
 	"net/http"
+	"strconv"
+	"sync"
 
 	internalnats "gnats/internal/nats"
 
@@ -32,6 +34,9 @@ func NewWSHandler(manager *internalnats.Manager) *WSHandler {
 func (h *WSHandler) Subscribe(w http.ResponseWriter, r *http.Request) {
 	connID := chi.URLParam(r, "id")
 	subject := r.URL.Query().Get("subject")
+	queue := r.URL.Query().Get("queue")
+	maxMsgsStr := r.URL.Query().Get("max_msgs")
+	pendingLimitStr := r.URL.Query().Get("pending_limit")
 
 	if subject == "" {
 		http.Error(w, "subject is required", http.StatusBadRequest)
@@ -51,27 +56,91 @@ func (h *WSHandler) Subscribe(w http.ResponseWriter, r *http.Request) {
 	}
 	defer ws.Close()
 
-	sub, err := client.Conn.Subscribe(subject, func(msg *nats.Msg) {
-		// Send message to websocket
+	// Parse max_msgs and pending_limit
+	var maxMsgs int
+	if maxMsgsStr != "" {
+		if val, err := strconv.Atoi(maxMsgsStr); err == nil {
+			maxMsgs = val
+		}
+	}
+
+	var pendingLimit int
+	if pendingLimitStr != "" {
+		if val, err := strconv.Atoi(pendingLimitStr); err == nil {
+			pendingLimit = val
+		}
+	}
+
+	// Create channel to notify websocket loop when max messages are received
+	doneChan := make(chan struct{})
+	var count int
+	var mu sync.Mutex
+
+	msgHandler := func(msg *nats.Msg) {
 		err := ws.WriteJSON(map[string]interface{}{
 			"subject": msg.Subject,
+			"reply":   msg.Reply,
 			"data":    string(msg.Data),
 			"headers": msg.Header,
 		})
 		if err != nil {
 			log.Printf("failed to write to websocket: %v", err)
+			return
 		}
-	})
+
+		if maxMsgs > 0 {
+			mu.Lock()
+			count++
+			if count >= maxMsgs {
+				select {
+				case <-doneChan:
+				default:
+					close(doneChan)
+				}
+			}
+			mu.Unlock()
+		}
+	}
+
+	var sub *nats.Subscription
+	if queue != "" {
+		sub, err = client.Conn.QueueSubscribe(subject, queue, msgHandler)
+	} else {
+		sub, err = client.Conn.Subscribe(subject, msgHandler)
+	}
+
 	if err != nil {
 		ws.WriteJSON(map[string]string{"error": err.Error()})
 		return
 	}
 	defer sub.Unsubscribe()
 
-	// Keep connection alive and wait for close
-	for {
-		if _, _, err := ws.ReadMessage(); err != nil {
-			break
+	// Apply MaxMessages at NATS level if set
+	if maxMsgs > 0 {
+		sub.AutoUnsubscribe(maxMsgs)
+	}
+
+	// Apply Pending limits at NATS level if set
+	if pendingLimit > 0 {
+		sub.SetPendingLimits(pendingLimit, -1)
+	}
+
+	// Keep connection alive and wait for close, or exit when max messages received
+	readDone := make(chan error, 1)
+	go func() {
+		for {
+			if _, _, err := ws.ReadMessage(); err != nil {
+				readDone <- err
+				return
+			}
 		}
+	}()
+
+	select {
+	case <-readDone:
+	case <-doneChan:
+		ws.WriteJSON(map[string]interface{}{
+			"info": "auto_unsubscribed",
+		})
 	}
 }
