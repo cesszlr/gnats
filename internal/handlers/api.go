@@ -98,9 +98,12 @@ func (a *API) Routes() chi.Router {
 		r.Get("/connections/{id}/streams", a.ListStreams)
 		r.Post("/connections/{id}/streams", a.CreateStream)
 		r.Delete("/connections/{id}/streams/{stream}", a.DeleteStream)
-		r.Get("/connections/{id}/streams/{stream}/messages", a.GetStreamMessages)
+		r.Get("/connections/{id}/streams/{stream}/messages/sse", a.GetStreamMessagesSSE)
 		r.Post("/connections/{id}/streams/{stream}/purge", a.PurgeStream)
 		r.Get("/connections/{id}/streams/{stream}/consumers", a.ListConsumers)
+		r.Get("/connections/{id}/streams/{stream}/consumers/{consumer}", a.GetConsumer)
+		r.Post("/connections/{id}/streams/{stream}/consumers", a.CreateConsumer)
+		r.Delete("/connections/{id}/streams/{stream}/consumers/{consumer}", a.DeleteConsumer)
 
 		r.Get("/connections/{id}/kv", a.ListKV)
 		r.Post("/connections/{id}/kv", a.CreateKV)

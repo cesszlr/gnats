@@ -2,8 +2,6 @@ package service
 
 import (
 	"context"
-	"sort"
-	"time"
 
 	internalnats "gnats/internal/nats"
 
@@ -65,48 +63,42 @@ func (s *JetStreamService) ListConsumers(ctx context.Context, client *internalna
 	return result, nil
 }
 
-func (s *JetStreamService) GetMessages(ctx context.Context, client *internalnats.Client, streamName string, limit int) ([]map[string]interface{}, error) {
+func (s *JetStreamService) GetConsumer(ctx context.Context, client *internalnats.Client, streamName, consumerName string) (*jetstream.ConsumerInfo, error) {
 	stream, err := client.JS.Stream(ctx, streamName)
 	if err != nil {
 		return nil, err
 	}
-
-	cfg := jetstream.ConsumerConfig{
-		AckPolicy: jetstream.AckNonePolicy,
-	}
-
-	// Default to last messages
-	cfg.DeliverPolicy = jetstream.DeliverLastPerSubjectPolicy
-	if limit > 1 {
-		cfg.DeliverPolicy = jetstream.DeliverLastPolicy
-	}
-
-	cons, err := stream.CreateOrUpdateConsumer(ctx, cfg)
+	consumer, err := stream.Consumer(ctx, consumerName)
 	if err != nil {
+		if err == jetstream.ErrNotPullConsumer || err.Error() == "nats: consumer is not a pull consumer" {
+			pushConsumer, pushErr := stream.PushConsumer(ctx, consumerName)
+			if pushErr != nil {
+				return nil, pushErr
+			}
+			return pushConsumer.Info(ctx)
+		}
 		return nil, err
 	}
-	defer stream.DeleteConsumer(ctx, cons.CachedInfo().Name)
-
-	msgs, err := cons.Fetch(limit, jetstream.FetchMaxWait(time.Second))
-	if err != nil {
-		return nil, err
-	}
-
-	var result []map[string]interface{}
-	for msg := range msgs.Messages() {
-		meta, _ := msg.Metadata()
-		result = append(result, map[string]interface{}{
-			"subject":  msg.Subject(),
-			"data":     string(msg.Data()),
-			"sequence": meta.Sequence.Stream,
-			"time":     meta.Timestamp,
-		})
-	}
-
-	// Sort by sequence descending to show newest first
-	sort.Slice(result, func(i, j int) bool {
-		return result[i]["sequence"].(uint64) > result[j]["sequence"].(uint64)
-	})
-
-	return result, nil
+	return consumer.Info(ctx)
 }
+
+func (s *JetStreamService) CreateConsumer(ctx context.Context, client *internalnats.Client, streamName string, cfg jetstream.ConsumerConfig) (*jetstream.ConsumerInfo, error) {
+	stream, err := client.JS.Stream(ctx, streamName)
+	if err != nil {
+		return nil, err
+	}
+	consumer, err := stream.CreateOrUpdateConsumer(ctx, cfg)
+	if err != nil {
+		return nil, err
+	}
+	return consumer.Info(ctx)
+}
+
+func (s *JetStreamService) DeleteConsumer(ctx context.Context, client *internalnats.Client, streamName, consumerName string) error {
+	stream, err := client.JS.Stream(ctx, streamName)
+	if err != nil {
+		return err
+	}
+	return stream.DeleteConsumer(ctx, consumerName)
+}
+

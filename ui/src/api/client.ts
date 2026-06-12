@@ -127,14 +127,30 @@ export const apiClient = {
     return handleResponse<void>(res);
   },
 
-  async getStreamMessages(id: string, stream: string, limit = 50): Promise<any[]> {
-    const res = await fetch(`${BASE_URL}/connections/${id}/streams/${stream}/messages?limit=${limit}`);
-    return handleResponse<any[]>(res);
-  },
-
   async listConsumers(id: string, stream: string): Promise<any[]> {
     const res = await fetch(`${BASE_URL}/connections/${id}/streams/${stream}/consumers`);
     return handleResponse<any[]>(res);
+  },
+
+  async getConsumer(id: string, stream: string, consumer: string): Promise<any> {
+    const res = await fetch(`${BASE_URL}/connections/${id}/streams/${stream}/consumers/${consumer}`);
+    return handleResponse<any>(res);
+  },
+
+  async createConsumer(id: string, stream: string, cfg: any): Promise<any> {
+    const res = await fetch(`${BASE_URL}/connections/${id}/streams/${stream}/consumers`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(cfg),
+    });
+    return handleResponse<any>(res);
+  },
+
+  async deleteConsumer(id: string, stream: string, consumer: string): Promise<void> {
+    const res = await fetch(`${BASE_URL}/connections/${id}/streams/${stream}/consumers/${consumer}`, {
+      method: 'DELETE',
+    });
+    return handleResponse<void>(res);
   },
 
   // KV

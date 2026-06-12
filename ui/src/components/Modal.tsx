@@ -35,7 +35,7 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, width =
         style={{ maxWidth: width }}
       >
         <div className="modal-header">
-          <h3 style={{ margin: 0 }}>{title}</h3>
+          <h3 style={{ margin: 0, wordBreak: 'break-all', paddingRight: '1rem', flex: 1 }}>{title}</h3>
           <button className="btn btn-secondary" style={{ padding: '0.5rem', border: 'none' }} onClick={onClose}>
             <X size={20} />
           </button>

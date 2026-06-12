@@ -31,8 +31,8 @@ GNATS is a modern, lightweight, and powerful open-source management interface de
 - 🌊 **JetStream Management**:
     - **Visual Distribution**: Charts showing message volume across top streams.
     - Create, view, purge, and delete Streams.
-    - View message content in Streams in real-time (supports JSON/YAML formatting).
-    - Monitor Consumer status and progress.
+    - **Real-time SSE Message Capture**: Capture stream messages in real-time using SSE (Server-Sent Events) with zero-delay modal opening. Support start/stop capturing toggle, auto-deduplication, max 200 message display limit, and live status breathing light (supports JSON/YAML formatting).
+    - **Consumer Lifecycle Management**: Graphical creation of Push/Pull consumers (with durable names, descriptions, ack/deliver policies, ack wait, max deliver, and multi-subject filters), tabular list display (Name, Type, Pending, Ack Pending, Redelivered), delete operations, and full details popup Modal with no overflow.
 - 🔑 **KV Store**:
     - Manage Buckets with configuration for TTL, history, and replicas.
     - **Professional Editor**: Integrated **CodeMirror 6** for high-performance value editing.
@@ -61,6 +61,10 @@ GNATS is a modern, lightweight, and powerful open-source management interface de
 ### Core Pub/Sub
 ![Publish/Subscribe](images/pub-1.png)
 ![Request/Reply](images/pub-2.png)
+
+### JetStream
+![JetStream Consumer](images/jetstream-1.png)
+![JetStream Message](images/jetstream-2.png)
 
 ### KV Store
 ![KV Store](images/kv.png)
@@ -124,7 +128,7 @@ The fastest way to get started. The image is extremely small as it only contains
 ## 🗺️ Roadmap
 
 - [x] **Request-Reply Debugging Panel**: A dedicated interface for publishing messages and awaiting/rendering the response synchronously, with client-side cancellation.
-- [ ] **Consumer Lifecycle Management**: Graphical creation, detailed configuration, and operation of JetStream Consumers.
+- [x] **Consumer Lifecycle Management**: Graphical creation, detailed configuration, and operation of JetStream Consumers (including Push/Pull auto-detection).
 - [ ] **Key History & Rollback**: View historical revisions of KV keys and easily rollback to past versions.
 
 ---
