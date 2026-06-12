@@ -236,7 +236,7 @@ const Core: React.FC = () => {
             </h2>
             <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
               <input className="input" style={{ marginBottom: 0 }} value={subSubject} onChange={e => setSubSubject(e.target.value)} disabled={isSubscribed} />
-              <button className={`btn ${isSubscribed ? 'btn-secondary' : 'btn-primary'}`} onClick={toggleSubscribe}>
+              <button className={`btn ${isSubscribed ? 'btn-danger' : 'btn-primary'}`} onClick={toggleSubscribe}>
                 {isSubscribed ? <Square size={18} /> : <Play size={18} />}
               </button>
             </div>

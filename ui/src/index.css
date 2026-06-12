@@ -200,6 +200,19 @@ body {
   background-color: rgba(255, 255, 255, 0.05);
 }
 
+.btn-danger {
+  background-color: var(--error-color);
+  color: white;
+  border-color: var(--error-color);
+}
+
+.btn-danger:hover {
+  background-color: #dc2626;
+  border-color: #dc2626;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
+}
+
 .input {
   width: 100%;
   padding: 0.75rem 1rem;

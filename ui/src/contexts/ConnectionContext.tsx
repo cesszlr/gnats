@@ -45,10 +45,19 @@ export const ConnectionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
   }, [lang, i18n]);
 
+  useEffect(() => {
+    if (activeConnection) {
+      localStorage.setItem('gnats-active-connection-id', activeConnection.id);
+    } else {
+      localStorage.removeItem('gnats-active-connection-id');
+    }
+  }, [activeConnection]);
+
   const refreshConnections = useCallback(async (newActiveID?: string, forceCheck?: boolean) => {
     try {
       const currentActive = activeConnectionRef.current;
-      const checkID = forceCheck ? (newActiveID || currentActive?.id) : undefined;
+      const savedActiveID = localStorage.getItem('gnats-active-connection-id');
+      const checkID = forceCheck ? (newActiveID || currentActive?.id || savedActiveID || undefined) : undefined;
       const data = await apiClient.listConnections(checkID);
       setConnections(data);
       
@@ -66,7 +75,17 @@ export const ConnectionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       } else if (currentActive && !data.find(c => c.id === currentActive.id)) {
         setActiveConnection(data.length > 0 ? data[0] : null);
       } else if (!currentActive && data.length > 0) {
-        setActiveConnection(data[0]);
+        const saved = savedActiveID ? data.find(c => c.id === savedActiveID) : null;
+        if (saved) {
+          setActiveConnection(saved);
+        } else {
+          const connected = data.find(c => c.status === 'CONNECTED' || (c as any).Status === 'CONNECTED');
+          if (connected) {
+            setActiveConnection(connected);
+          } else {
+            setActiveConnection(data[0]);
+          }
+        }
       }
     } catch (err) {
       console.error(err);
@@ -74,7 +93,7 @@ export const ConnectionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   }, []);
 
   useEffect(() => {
-    refreshConnections();
+    refreshConnections(undefined, true); // Force check at startup to reconcile connected status
   }, []);
 
   return (
