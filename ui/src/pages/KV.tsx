@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useConnection } from '../contexts/ConnectionContext';
 import { useTranslation } from 'react-i18next';
 import { useToast } from '../components/Toast';
-import { Plus, RefreshCcw, Search, Database, Key, X, Eye, Trash2 } from 'lucide-react';
+import { Plus, RefreshCcw, Search, Database, Key, Eye, Trash2 } from 'lucide-react';
 import { apiClient } from '../api/client';
 import CodeMirror from '@uiw/react-codemirror';
 import { json } from '@codemirror/lang-json';
@@ -10,6 +10,7 @@ import { yaml } from '@codemirror/lang-yaml';
 import { vscodeDark, vscodeLight } from '@uiw/codemirror-theme-vscode';
 import { AddBucketModal } from '../components/AddBucketModal';
 import { PutKeyModal } from '../components/PutKeyModal';
+import Modal from '../components/Modal';
 
 const KV: React.FC = () => {
   const { activeConnection, theme } = useConnection();
@@ -26,12 +27,17 @@ const KV: React.FC = () => {
   const [loadingKeys, setLoadingKeys] = useState(false);
   const [showAddBucket, setShowAddBucket] = useState(false);
   const [showAddKey, setShowAddKey] = useState(false);
-  const [viewingKey, setViewingKey] = useState<{ key: string, value: string } | null>(null);
+  const [viewingKey, setViewingKey] = useState<{ key: string, value: string, rev?: number } | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState('');
   const [bucketSearch, setBucketSearch] = useState('');
   const [keySearch, setKeySearch] = useState('');
   const [formatMode, setFormatMode] = useState<'raw' | 'json' | 'yaml'>('raw');
+
+  const [history, setHistory] = useState<any[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+  const [activeTab, setActiveTab] = useState<'value' | 'history'>('value');
+  const [expandedRev, setExpandedRev] = useState<number | null>(null);
 
   const extensions = useMemo(() => {
     if (formatMode === 'json') return [json()];
@@ -51,6 +57,10 @@ const KV: React.FC = () => {
     setKeys([]);
     setBucketStatus(null);
     setViewingKey(null);
+    setHistory([]);
+    setLoadingHistory(false);
+    setActiveTab('value');
+    setExpandedRev(null);
     setBucketSearch('');
     setKeySearch('');
     setOffset(0);
@@ -165,6 +175,19 @@ const KV: React.FC = () => {
       setViewingKey(data);
       setEditValue(data.value);
       setIsEditing(false);
+      setActiveTab('value');
+      setExpandedRev(null);
+
+      setLoadingHistory(true);
+      try {
+        const histData = await apiClient.getKVKeyHistory(activeConnection.id, bucket, key);
+        setHistory(histData || []);
+      } catch (histErr) {
+        console.error("Failed to load key history:", histErr);
+        setHistory([]);
+      } finally {
+        setLoadingHistory(false);
+      }
     } catch (err: any) {
       showToast(err.message || String(err), 'error');
     }
@@ -174,9 +197,23 @@ const KV: React.FC = () => {
     if (!activeConnection || !selectedBucket || !viewingKey) return;
     try {
       await apiClient.putKVKey(activeConnection.id, selectedBucket, viewingKey.key, editValue);
-      setViewingKey({ ...viewingKey, value: editValue });
       setIsEditing(false);
       showToast(t('save_success') || 'Saved successfully', 'success');
+
+      // Refresh data
+      const data = await apiClient.getKVKey(activeConnection.id, selectedBucket, viewingKey.key);
+      setViewingKey(data);
+      setEditValue(data.value);
+
+      setLoadingHistory(true);
+      try {
+        const histData = await apiClient.getKVKeyHistory(activeConnection.id, selectedBucket, viewingKey.key);
+        setHistory(histData || []);
+      } catch (histErr) {
+        console.error(histErr);
+      } finally {
+        setLoadingHistory(false);
+      }
     } catch (err: any) {
       showToast(err.message || String(err), 'error');
     }
@@ -239,11 +276,11 @@ const KV: React.FC = () => {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
             <h3 style={{ margin: 0 }}>{t('buckets')}</h3>
             <button 
-              className="btn btn-secondary" 
+              className="btn btn-secondary custom-tooltip" 
               style={{ padding: '0.25rem 0.5rem' }} 
               onClick={loadBuckets} 
               disabled={loadingBuckets} 
-              title={t('refresh')}
+              data-tooltip={t('refresh')}
             >
               <RefreshCcw size={14} className={loadingBuckets ? 'animate-spin' : ''} />
             </button>
@@ -292,61 +329,18 @@ const KV: React.FC = () => {
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', overflow: 'hidden' }}>
-          {viewingKey && (
-            <div className="card animate-fade-in" style={{ flexShrink: 0 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}><Key size={18} /> {viewingKey.key}</h3>
-                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                  {!isEditing && (
-                    <div className="btn-group">
-                      <button className={`btn ${formatMode === 'raw' ? 'active' : ''}`} onClick={() => setFormatMode('raw')}>{t('raw')}</button>
-                      <button className={`btn ${formatMode === 'json' ? 'active' : ''}`} onClick={() => setFormatMode('json')}>{t('json')}</button>
-                      <button className={`btn ${formatMode === 'yaml' ? 'active' : ''}`} onClick={() => setFormatMode('yaml')}>{t('yaml')}</button>
-                    </div>
-                  )}
-                  {isEditing ? (
-                    <div style={{ display: 'flex', gap: '0.5rem' }}>
-                      <button className="btn btn-secondary" onClick={() => setIsEditing(false)}>{t('cancel')}</button>
-                      <button className="btn btn-primary" onClick={handleSaveValue}>{t('save')}</button>
-                    </div>
-                  ) : (
-                    <button className="btn btn-secondary" onClick={() => setIsEditing(true)}>{t('edit')}</button>
-                  )}
-                  <button className="btn btn-secondary" onClick={() => setViewingKey(null)}><X size={18} /></button>
-                </div>
-              </div>
-              {isEditing ? (
-                <div style={{ border: '1px solid var(--border-color)', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
-                  <CodeMirror 
-                    value={editValue} 
-                    height="300px"
-                    theme={cmTheme}
-                    extensions={extensions}
-                    onChange={value => setEditValue(value)}
-                  />
-                </div>
-              ) : (
-                <div style={{ border: '1px solid var(--border-color)', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
-                  <CodeMirror 
-                    value={formatData(viewingKey.value, formatMode)} 
-                    height="300px"
-                    theme={cmTheme}
-                    extensions={extensions}
-                    readOnly={true}
-                    editable={false}
-                  />
-                </div>
-              )}
-            </div>
-          )}
-
           <div className="card animate-fade-in" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
             {selectedBucket ? (
               <>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem', flexShrink: 0 }}>
                   <h3 style={{ margin: 0 }}>{t('keys')} in {selectedBucket}</h3>
                   <div style={{ display: 'flex', gap: '1rem' }}>
-                    <button className="btn btn-secondary" onClick={() => { setOffset(0); loadKeys(selectedBucket, keySearch, 0); loadBucketStatus(selectedBucket); }} disabled={loadingKeys} title={t('refresh')}>
+                    <button 
+                      className="btn btn-secondary custom-tooltip" 
+                      onClick={() => { setOffset(0); loadKeys(selectedBucket, keySearch, 0); loadBucketStatus(selectedBucket); }} 
+                      disabled={loadingKeys} 
+                      data-tooltip={t('refresh')}
+                    >
                       <RefreshCcw size={18} className={loadingKeys ? 'animate-spin' : ''} />
                     </button>
                     <button className="btn btn-primary" onClick={() => setShowAddKey(true)}>
@@ -398,10 +392,18 @@ const KV: React.FC = () => {
                         <div key={k} className="animate-fade-in" style={{ padding: '0.75rem 1rem', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <span style={{ fontWeight: '500' }}>{k}</span>
                           <div style={{ display: 'flex', gap: '0.5rem' }}>
-                            <button className="btn btn-secondary" style={{ padding: '0.35rem' }} onClick={() => handleViewKey(selectedBucket, k)}>
+                            <button 
+                              className="btn btn-secondary custom-tooltip" 
+                              style={{ padding: '0.35rem' }} 
+                              onClick={() => handleViewKey(selectedBucket, k)}
+                              data-tooltip={t('view') || 'View'}
+                            >
                               <Eye size={16} />
                             </button>
-                            <button className="btn btn-secondary" style={{ padding: '0.35rem', color: 'var(--error-color)' }} onClick={() => {
+                            <button 
+                              className="btn btn-secondary custom-tooltip" 
+                              style={{ padding: '0.35rem', color: 'var(--error-color)' }} 
+                              onClick={() => {
                                 if (confirm(`Delete key ${k}?`)) {
                                   apiClient.deleteKVKey(activeConnection.id, selectedBucket, k)
                                     .then(() => {
@@ -409,7 +411,9 @@ const KV: React.FC = () => {
                                       loadKeys(selectedBucket, keySearch, 0);
                                     });
                                 }
-                            }}>
+                              }}
+                              data-tooltip={t('delete') || 'Delete'}
+                            >
                               <Trash2 size={16} />
                             </button>
                           </div>
@@ -433,6 +437,211 @@ const KV: React.FC = () => {
           </div>
         </div>
       </div>
+
+      <Modal
+        isOpen={!!viewingKey}
+        onClose={() => { setViewingKey(null); setHistory([]); }}
+        title={`${t('key') || 'Key'}: ${viewingKey?.key || ''}`}
+        width="800px"
+        headerActions={
+          viewingKey && !isEditing && (
+            <div className="btn-group" style={{ flexShrink: 0 }}>
+              <button className={`btn ${formatMode === 'raw' ? 'active' : ''}`} onClick={() => setFormatMode('raw')}>{t('raw')}</button>
+              <button className={`btn ${formatMode === 'json' ? 'active' : ''}`} onClick={() => setFormatMode('json')}>{t('json')}</button>
+              <button className={`btn ${formatMode === 'yaml' ? 'active' : ''}`} onClick={() => setFormatMode('yaml')}>{t('yaml')}</button>
+            </div>
+          )
+        }
+      >
+        {viewingKey && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div style={{ display: 'flex', gap: '1rem', borderBottom: '1px solid var(--border-color)', marginBottom: '0.5rem' }}>
+              <button 
+                className={`tab-btn`} 
+                onClick={() => setActiveTab('value')}
+                style={{
+                  padding: '0.5rem 1rem',
+                  background: 'none',
+                  border: 'none',
+                  borderBottom: activeTab === 'value' ? '2px solid var(--accent-color)' : '2px solid transparent',
+                  color: activeTab === 'value' ? 'var(--text-primary)' : 'var(--text-secondary)',
+                  fontWeight: activeTab === 'value' ? '600' : 'normal',
+                  cursor: 'pointer'
+                }}
+              >
+                {t('value') || 'Value'}
+              </button>
+              <button 
+                className={`tab-btn`} 
+                onClick={() => setActiveTab('history')}
+                style={{
+                  padding: '0.5rem 1rem',
+                  background: 'none',
+                  border: 'none',
+                  borderBottom: activeTab === 'history' ? '2px solid var(--accent-color)' : '2px solid transparent',
+                  color: activeTab === 'history' ? 'var(--text-primary)' : 'var(--text-secondary)',
+                  fontWeight: activeTab === 'history' ? '600' : 'normal',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.25rem'
+                }}
+              >
+                {t('history') || 'History'} {history.length > 0 && <span style={{ fontSize: '0.75rem', padding: '0.1rem 0.4rem', borderRadius: '10px', background: 'var(--border-color)', color: 'var(--text-primary)' }}>{history.length}</span>}
+              </button>
+            </div>
+
+            {activeTab === 'value' ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                {isEditing ? (
+                  <div style={{ border: '1px solid var(--border-color)', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
+                    <CodeMirror 
+                      value={editValue} 
+                      height="300px"
+                      theme={cmTheme}
+                      extensions={extensions}
+                      onChange={value => setEditValue(value)}
+                    />
+                  </div>
+                ) : (
+                  <div style={{ border: '1px solid var(--border-color)', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
+                    <CodeMirror 
+                      value={formatData(viewingKey.value, formatMode)} 
+                      height="300px"
+                      theme={cmTheme}
+                      extensions={extensions}
+                      readOnly={true}
+                      editable={false}
+                    />
+                  </div>
+                )}
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '0.5rem' }}>
+                  {isEditing ? (
+                    <>
+                      <button className="btn btn-secondary" onClick={() => setIsEditing(false)}>{t('cancel')}</button>
+                      <button className="btn btn-primary" onClick={handleSaveValue}>{t('save')}</button>
+                    </>
+                  ) : (
+                    <button className="btn btn-secondary" onClick={() => setIsEditing(true)}>{t('edit')}</button>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div style={{ maxHeight: '350px', overflowY: 'auto' }}>
+                {loadingHistory ? (
+                  <div style={{ padding: '2rem', textAlign: 'center' }}>
+                    <RefreshCcw size={20} className="animate-spin" style={{ color: 'var(--accent-color)', margin: '0 auto' }} />
+                  </div>
+                ) : history.length === 0 ? (
+                  <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                    {t('no_history') || 'No history recorded'}
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    {history.map((h: any) => {
+                      const isCurrent = h.rev === viewingKey.rev;
+                      const isPut = h.operation === 'KeyValuePut' || h.operation === 'PUT';
+                      const isExpanded = expandedRev === h.rev;
+
+                      return (
+                        <div 
+                          key={h.rev} 
+                          style={{ 
+                            border: '1px solid var(--border-color)', 
+                            borderRadius: 'var(--radius)', 
+                            padding: '0.75rem 1rem',
+                            backgroundColor: isCurrent ? 'var(--bg-secondary)' : 'transparent',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '0.5rem'
+                          }}
+                        >
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                              <span style={{ fontWeight: '600' }}>#{h.rev}</span>
+                              {isCurrent && (
+                                <span style={{ 
+                                  fontSize: '0.7rem', 
+                                  background: 'var(--accent-color)', 
+                                  color: 'white', 
+                                  padding: '0.1rem 0.35rem', 
+                                  borderRadius: '3px' 
+                                }}>
+                                  {t('current') || 'Current'}
+                                </span>
+                              )}
+                              <span style={{ 
+                                fontSize: '0.7rem', 
+                                background: isPut ? 'rgba(76, 175, 80, 0.15)' : 'rgba(244, 67, 54, 0.15)', 
+                                color: isPut ? '#4caf50' : '#f44336', 
+                                padding: '0.1rem 0.35rem', 
+                                borderRadius: '3px',
+                                fontWeight: '500'
+                              }}>
+                                {h.operation}
+                              </span>
+                              <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                                {new Date(h.created).toLocaleString()}
+                              </span>
+                            </div>
+
+                            <div style={{ display: 'flex', gap: '0.5rem' }}>
+                              <button 
+                                className="btn btn-secondary" 
+                                style={{ padding: '0.25rem 0.5rem', fontSize: '0.8rem' }}
+                                onClick={() => setExpandedRev(isExpanded ? null : h.rev)}
+                              >
+                                {isExpanded ? (t('hide') || 'Hide') : (t('view') || 'View')}
+                              </button>
+                              {isPut && !isCurrent && (
+                                  <button 
+                                    className="btn btn-primary" 
+                                    style={{ padding: '0.25rem 0.5rem', fontSize: '0.8rem' }}
+                                    onClick={async () => {
+                                      if (confirm(t('rollback_confirm', { rev: h.rev }) || `Are you sure you want to rollback to revision #${h.rev}?`)) {
+                                        try {
+                                          await apiClient.putKVKey(activeConnection.id, selectedBucket!, viewingKey.key, h.value);
+                                          showToast(t('rollback_success') || 'Rolled back successfully', 'success');
+                                          handleViewKey(selectedBucket!, viewingKey.key);
+                                        } catch (err: any) {
+                                          showToast(err.message || String(err), 'error');
+                                        }
+                                      }
+                                    }}
+                                  >
+                                    {t('rollback') || 'Rollback'}
+                                  </button>
+                              )}
+                            </div>
+                          </div>
+
+                          {isExpanded && (
+                            <div style={{ 
+                              marginTop: '0.5rem', 
+                              padding: '0.75rem', 
+                              background: 'var(--bg-secondary)', 
+                              border: '1px solid var(--border-color)', 
+                              borderRadius: 'var(--radius)',
+                              fontSize: '0.85rem',
+                              fontFamily: 'monospace',
+                              whiteSpace: 'pre-wrap',
+                              wordBreak: 'break-all',
+                              maxHeight: '150px',
+                              overflowY: 'auto'
+                            }}>
+                              {formatData(h.value, formatMode) || <span style={{ fontStyle: 'italic', color: 'var(--text-secondary)' }}>{t('empty_value') || 'No Value'}</span>}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+      </Modal>
     </div>
   );
 };

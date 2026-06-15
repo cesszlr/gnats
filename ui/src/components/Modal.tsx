@@ -8,9 +8,10 @@ interface ModalProps {
   title: string;
   children: React.ReactNode;
   width?: string;
+  headerActions?: React.ReactNode;
 }
 
-const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, width = '500px' }) => {
+const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, width = '500px', headerActions }) => {
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
@@ -36,9 +37,12 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, width =
       >
         <div className="modal-header">
           <h3 style={{ margin: 0, wordBreak: 'break-all', paddingRight: '1rem', flex: 1 }}>{title}</h3>
-          <button className="btn btn-secondary" style={{ padding: '0.5rem', border: 'none' }} onClick={onClose}>
-            <X size={20} />
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexShrink: 0 }}>
+            {headerActions}
+            <button className="btn btn-secondary custom-tooltip-left" style={{ padding: '0.5rem', border: 'none' }} onClick={onClose} data-tooltip="Close">
+              <X size={20} />
+            </button>
+          </div>
         </div>
         <div className="modal-body">
           {children}

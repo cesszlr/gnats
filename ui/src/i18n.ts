@@ -182,7 +182,16 @@ const resources = {
       "type": "Type",
       "actions": "Actions",
       "details": "Details",
-      "no_details_data": "No details data available"
+      "no_details_data": "No details data available",
+      "save_success": "Saved successfully",
+      "bucket_create_success": "Bucket created successfully",
+      "key_put_success": "Key updated successfully",
+      "rollback_confirm": "Are you sure you want to rollback to revision #{{rev}}?",
+      "rollback_success": "Rolled back successfully",
+      "rollback": "Rollback",
+      "no_history": "No history recorded",
+      "empty_value": "No Value",
+      "current": "Current"
     }
   },
   zh: {
@@ -364,7 +373,16 @@ const resources = {
       "type": "类型",
       "actions": "操作",
       "details": "详情",
-      "no_details_data": "暂无详情数据"
+      "no_details_data": "暂无详情数据",
+      "save_success": "保存成功",
+      "bucket_create_success": "存储桶创建成功",
+      "key_put_success": "Key 修改成功",
+      "rollback_confirm": "确定要回滚到修订号 #{{rev}} 吗？",
+      "rollback_success": "回滚成功",
+      "rollback": "回滚",
+      "no_history": "暂无历史版本记录",
+      "empty_value": "无内容",
+      "current": "当前版本"
     }
   }
 };

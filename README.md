@@ -129,7 +129,8 @@ The fastest way to get started. The image is extremely small as it only contains
 
 - [x] **Request-Reply Debugging Panel**: A dedicated interface for publishing messages and awaiting/rendering the response synchronously, with client-side cancellation.
 - [x] **Consumer Lifecycle Management**: Graphical creation, detailed configuration, and operation of JetStream Consumers (including Push/Pull auto-detection).
-- [ ] **Key History & Rollback**: View historical revisions of KV keys and easily rollback to past versions.
+- [x] **Key History & Rollback**: View historical revisions of KV keys and easily rollback to past versions.
+- [ ] **Key-Value Diff Viewer**: Visual side-by-side comparison of historical revisions for Key-Value entries.
 
 ---
 

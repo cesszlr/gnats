@@ -190,6 +190,11 @@ export const apiClient = {
     return handleResponse<any>(res);
   },
 
+  async getKVKeyHistory(id: string, bucket: string, key: string): Promise<any[]> {
+    const res = await fetch(`${BASE_URL}/connections/${id}/kv/${bucket}/keys/${key}/history`);
+    return handleResponse<any[]>(res);
+  },
+
   async putKVKey(id: string, bucket: string, key: string, value: string): Promise<void> {
     const res = await fetch(`${BASE_URL}/connections/${id}/kv/${bucket}/keys/${key}`, {
       method: 'PUT',

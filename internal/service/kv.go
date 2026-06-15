@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"strings"
 
 	internalnats "gnats/internal/nats"
@@ -36,12 +37,34 @@ func (s *KVService) DeleteBucket(ctx context.Context, client *internalnats.Clien
 	return client.JS.DeleteKeyValue(ctx, bucket)
 }
 
-func (s *KVService) GetStatus(ctx context.Context, client *internalnats.Client, bucket string) (jetstream.KeyValueStatus, error) {
+func (s *KVService) GetStatus(ctx context.Context, client *internalnats.Client, bucket string) (interface{}, error) {
 	kv, err := client.JS.KeyValue(ctx, bucket)
 	if err != nil {
 		return nil, err
 	}
-	return kv.Status(ctx)
+	status, err := kv.Status(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	ttl := "None"
+	if status.TTL() > 0 {
+		ttl = status.TTL().String()
+	}
+
+	storage := "File"
+	if status.Config().Storage == jetstream.MemoryStorage {
+		storage = "Memory"
+	}
+
+	return map[string]interface{}{
+		"bucket":  status.Bucket(),
+		"values":  status.Values(),
+		"history": status.History(),
+		"ttl":     ttl,
+		"storage": storage,
+		"bytes":   status.Bytes(),
+	}, nil
 }
 
 func (s *KVService) ListKeys(ctx context.Context, client *internalnats.Client, bucket string, search string, offset, limit int) (interface{}, error) {
@@ -122,4 +145,31 @@ func (s *KVService) DeleteKey(ctx context.Context, client *internalnats.Client, 
 	}
 
 	return kv.Delete(ctx, key)
+}
+
+func (s *KVService) GetKeyHistory(ctx context.Context, client *internalnats.Client, bucket string, key string) (interface{}, error) {
+	kv, err := client.JS.KeyValue(ctx, bucket)
+	if err != nil {
+		return nil, err
+	}
+
+	entries, err := kv.History(ctx, key)
+	if err != nil {
+		if errors.Is(err, jetstream.ErrKeyNotFound) {
+			return []interface{}{}, nil
+		}
+		return nil, err
+	}
+
+	var history []map[string]interface{}
+	for _, entry := range entries {
+		history = append(history, map[string]interface{}{
+			"key":       entry.Key(),
+			"value":     string(entry.Value()),
+			"rev":       entry.Revision(),
+			"created":   entry.Created(),
+			"operation": entry.Operation().String(),
+		})
+	}
+	return history, nil
 }

@@ -113,6 +113,7 @@ func (a *API) Routes() chi.Router {
 		r.Get("/connections/{id}/kv/{bucket}/keys/{key}", a.GetKVKey)
 		r.Put("/connections/{id}/kv/{bucket}/keys/{key}", a.PutKVKey)
 		r.Delete("/connections/{id}/kv/{bucket}/keys/{key}", a.DeleteKVKey)
+		r.Get("/connections/{id}/kv/{bucket}/keys/{key}/history", a.GetKVKeyHistory)
 
 		r.Get("/connections/{id}/object-store", a.ListObjectStores)
 		r.Post("/connections/{id}/object-store", a.CreateObjectStore)

@@ -126,3 +126,16 @@ func (a *API) DeleteKVKey(w http.ResponseWriter, r *http.Request) {
 	}
 	a.sendJSON(w, nil)
 }
+
+func (a *API) GetKVKeyHistory(w http.ResponseWriter, r *http.Request) {
+	bucket := chi.URLParam(r, "bucket")
+	key := chi.URLParam(r, "key")
+	client := a.getClient(r)
+
+	result, err := a.kvService.GetKeyHistory(r.Context(), client, bucket, key)
+	if err != nil {
+		a.sendError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	a.sendJSON(w, result)
+}
