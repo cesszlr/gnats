@@ -80,13 +80,15 @@ func main() {
 		http.ServeContent(w, r, "index.html", stat.ModTime(), index)
 	})
 
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
+	address := os.Getenv("ADDRESS")
+	if address == "" {
+		address = ":8080"
+	} else if !strings.Contains(address, ":") {
+		address = ":" + address
 	}
 
-	log.Printf("Starting server on :%s\n", port)
-	if err := http.ListenAndServe(":"+port, r); err != nil {
+	log.Printf("Starting server on %s\n", address)
+	if err := http.ListenAndServe(address, r); err != nil {
 		log.Fatal(err)
 	}
 }

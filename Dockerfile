@@ -27,7 +27,7 @@ RUN apk add --no-cache ca-certificates libc6-compat
 # Copy ONLY the binary (assets are now inside it)
 COPY --from=backend-builder /app/gnats .
 
-ENV PORT=8080
+ENV ADDRESS=:8080
 EXPOSE 8080
 
 CMD ["./gnats"]

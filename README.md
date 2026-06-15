@@ -77,7 +77,7 @@ GNATS can be configured using environment variables:
 
 | Environment Variable | Description | Default Value |
 | :--- | :--- | :--- |
-| `PORT` | The port the Web UI will listen on. | `8080` |
+| `ADDRESS` | The bind address the Web UI will listen on (supports IP:PORT or :PORT). | `:8080` |
 | `CONNECTIONS_FILE` | Path to save/load connection configurations. | `connections.json` |
 | `DEBUG` | If set to `true`, serves static files from `ui/dist` instead of embedded files. | `false` |
 

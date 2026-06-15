@@ -77,7 +77,7 @@ GNATS 支持通过环境变量进行配置：
 
 | 环境变量 | 描述 | 默认值 |
 | :--- | :--- | :--- |
-| `PORT` | Web UI 监听的端口。 | `8080` |
+| `ADDRESS` | Web UI 监听的绑定地址（支持 IP:PORT 或 :PORT 格式）。 | `:8080` |
 | `CONNECTIONS_FILE` | 连接配置文件的保存/加载路径。 | `connections.json` |
 | `DEBUG` | 设置为 `true` 时，将实时读取 `ui/dist` 文件夹而非嵌入文件。 | `false` |
 
