@@ -113,6 +113,27 @@ GNATS 支持通过环境变量进行配置：
    docker run -d -p 8080:8080 -v $(pwd)/data:/app/data -e CONNECTIONS_FILE=/app/data/connections.json --name gnats-app gnats-gui
    ```
 
+### 本地开发调试（非 Docker 模式）
+
+1. **构建前端**:
+   ```bash
+   cd ui
+   npm install
+   npm run build
+   cd ..
+   ```
+
+2. **启动服务端**:
+   ```bash
+   go run cmd/gnats/main.go
+   ```
+
+3. **运行测试数据模拟器 (可选)**:
+   我们提供了一个测试数据生成器，用来往 NATS 写入各种测试数据。详见 [cmd/demo/README_zh.md](cmd/demo/README_zh.md)。
+   ```bash
+   go run cmd/demo/main.go
+   ```
+
 ---
 
 ## 🛠 技术栈

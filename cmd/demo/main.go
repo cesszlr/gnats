@@ -58,7 +58,7 @@ func main() {
 	log.Println("\n==================================================")
 	log.Println("Demo is running successfully!")
 	log.Println("Press Ctrl+C to terminate the simulator and clean up.")
-	log.Println("==================================================\n")
+	log.Println("==================================================")
 
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)

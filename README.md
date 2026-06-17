@@ -113,6 +113,27 @@ The fastest way to get started. The image is extremely small as it only contains
    docker run -d -p 8080:8080 -v $(pwd)/data:/app/data -e CONNECTIONS_FILE=/app/data/connections.json --name gnats-app gnats-gui
    ```
 
+### Local Development (No Docker)
+
+1. **Build Frontend**:
+   ```bash
+   cd ui
+   npm install
+   npm run build
+   cd ..
+   ```
+
+2. **Run Server**:
+   ```bash
+   go run cmd/gnats/main.go
+   ```
+
+3. **Run Test Data Simulator (Optional)**:
+   We provide a simulator to populate NATS with mock data. See [cmd/demo/README.md](cmd/demo/README.md) for details.
+   ```bash
+   go run cmd/demo/main.go
+   ```
+
 ---
 
 ## 🛠 Tech Stack
