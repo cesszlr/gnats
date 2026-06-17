@@ -58,12 +58,13 @@ func (s *KVService) GetStatus(ctx context.Context, client *internalnats.Client, 
 	}
 
 	return map[string]interface{}{
-		"bucket":  status.Bucket(),
-		"values":  status.Values(),
-		"history": status.History(),
-		"ttl":     ttl,
-		"storage": storage,
-		"bytes":   status.Bytes(),
+		"bucket":   status.Bucket(),
+		"values":   status.Values(),
+		"history":  status.History(),
+		"ttl":      ttl,
+		"storage":  storage,
+		"bytes":    status.Bytes(),
+		"metadata": status.Config().Metadata,
 	}, nil
 }
 

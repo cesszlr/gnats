@@ -238,9 +238,14 @@ export const apiClient = {
     return handleResponse<any>(res);
   },
 
-  async listObjects(id: string, bucket: string): Promise<any[]> {
-    const res = await fetch(`${BASE_URL}/connections/${id}/object-store/${bucket}/objects`);
-    return handleResponse<any[]>(res);
+  async listObjects(id: string, bucket: string, search = '', offset = 0, limit = 50): Promise<any> {
+    const params = new URLSearchParams({
+      search,
+      offset: String(offset),
+      limit: String(limit),
+    });
+    const res = await fetch(`${BASE_URL}/connections/${id}/object-store/${bucket}/objects?${params}`);
+    return handleResponse<any>(res);
   },
 
   async deleteObject(id: string, bucket: string, key: string): Promise<void> {
@@ -248,6 +253,22 @@ export const apiClient = {
       method: 'DELETE',
     });
     return handleResponse<void>(res);
+  },
+
+  async downloadObject(id: string, bucket: string, key: string, filename: string): Promise<void> {
+    const res = await fetch(`${BASE_URL}/connections/${id}/object-store/${bucket}/objects/${encodeURIComponent(key)}`);
+    if (!res.ok) {
+      throw new Error(`Failed to download object: ${res.statusText}`);
+    }
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
   },
 
   // Services

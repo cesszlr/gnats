@@ -30,16 +30,23 @@ GNATS is a modern, lightweight, and powerful open-source management interface de
     - **Advanced Subscription Options**: Configure Queue Groups, Max Messages (auto stop & unsubscribe), and Pending Limits (slow consumer protection) visually.
 - 🌊 **JetStream Management**:
     - **Visual Distribution**: Charts showing message volume across top streams.
-    - Create, view, purge, and delete Streams.
+    - Create, view, purge, and delete Streams, with **purge confirmation refactored into a custom modal** for UI consistency.
+    - **Metadata & Description Insights**: Access stream descriptions and custom Metadata key-values inside the details popup modal; customer details also show attached metadata tags.
     - **Real-time SSE Message Capture**: Capture stream messages in real-time using SSE (Server-Sent Events) with zero-delay modal opening. Support start/stop capturing toggle, auto-deduplication, max 200 message display limit, and live status breathing light (supports JSON/YAML formatting).
     - **Consumer Lifecycle Management**: Graphical creation of Push/Pull consumers (with durable names, descriptions, ack/deliver policies, ack wait, max deliver, and multi-subject filters), tabular list display (Name, Type, Pending, Ack Pending, Redelivered), delete operations, and full details popup Modal with no overflow.
 - 🔑 **KV Store**:
     - Manage Buckets with configuration for TTL, history, and replicas.
+    - **Bucket Metadata Display**: Render custom metadata in persistent badge/card format inside the status bar if metadata is configured.
     - **Professional Editor**: Integrated **CodeMirror 6** for high-performance value editing.
     - **Syntax Highlighting**: Real-time formatting and auto-indentation for JSON/YAML.
     - Easy CRUD operations for Keys.
-- 📦 **Object Store**: Support for bucket management and object lifecycle operations.
-- 🔍 **Service Discovery**: Automatically discover and display services built with the NATS Micro framework.
+- 📦 **Object Store**:
+    - Support for bucket management and object lifecycle operations, **featuring persistent metadata display** like the KV store.
+    - **Deep Object Details**: Expandable panels to view details including NUID, chunks, digest (hashes), description, and custom metadata.
+- 🔍 **Service Discovery**:
+    - Automatically discover and display services built with the NATS Micro framework.
+    - **Enhanced Metadata Visibility**: Metadata tags are rendered directly on the service cards.
+    - **Dual Detail Foldout Panels**: Asynchronously fetch `$SRV.INFO` and `$SRV.STATS` to display endpoints, endpoint metadata, descriptions, start times, average latency, request volume, error counts, and recent error stacks in an elegant panel with smooth custom hover tooltips.
 - 📦 **Single Binary Distribution**: Frontend assets are embedded directly into the Go binary for zero-dependency deployment.
 - 🌓 **Premium Experience**:
     - **Dark/Light Mode** automatic switching.
@@ -64,10 +71,20 @@ GNATS is a modern, lightweight, and powerful open-source management interface de
 
 ### JetStream
 ![JetStream Consumer](images/jetstream-1.png)
-![JetStream Message](images/jetstream-2.png)
+![JetStream Details](images/jetstream-2.png)
+![JetStream Message](images/jetstream-3.png)
 
 ### KV Store
-![KV Store](images/kv.png)
+![KV Store](images/kv-1.png)
+![KV History](images/kv-2.png)
+![KV Diff](images/kv-3.png)
+
+### Object Store
+![Object Store](images/obj_store.png)
+
+### Service Discovery
+![Services List](images/services-1.png)
+![Service Details](images/services-2.png)
 
 ---
 
@@ -151,7 +168,7 @@ The fastest way to get started. The image is extremely small as it only contains
 - [x] **Request-Reply Debugging Panel**: A dedicated interface for publishing messages and awaiting/rendering the response synchronously, with client-side cancellation.
 - [x] **Consumer Lifecycle Management**: Graphical creation, detailed configuration, and operation of JetStream Consumers (including Push/Pull auto-detection).
 - [x] **Key History & Rollback**: View historical revisions of KV keys and easily rollback to past versions.
-- [ ] **Key-Value Diff Viewer**: Visual side-by-side comparison of historical revisions for Key-Value entries.
+- [x] **Key-Value Diff Viewer**: Visual side-by-side comparison of historical revisions for Key-Value entries.
 
 ---
 

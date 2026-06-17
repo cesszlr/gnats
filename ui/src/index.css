@@ -399,6 +399,7 @@ pre {
 .scroll-area {
   overflow-y: auto;
   scrollbar-gutter: stable;
+  padding-top: 2rem;
 }
 
 h1, h2, h3, h4 {

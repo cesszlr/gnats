@@ -349,7 +349,7 @@ const KV: React.FC = () => {
             {selectedBucket ? (
               <>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem', flexShrink: 0 }}>
-                  <h3 style={{ margin: 0 }}>{t('keys')} in {selectedBucket}</h3>
+                  <h3 style={{ margin: 0 }}>{t('keys_in_bucket', { bucket: selectedBucket })}</h3>
                   <div style={{ display: 'flex', gap: '1rem' }}>
                     <button 
                       className="btn btn-secondary custom-tooltip" 
@@ -374,11 +374,23 @@ const KV: React.FC = () => {
                 />
 
                 {bucketStatus && (
-                  <div style={{ display: 'flex', gap: '1.5rem', marginBottom: '1rem', fontSize: '0.75rem', color: 'var(--text-secondary)', flexShrink: 0 }}>
-                    <span>{t('values')}: <span style={{ color: 'var(--text-primary)', fontWeight: '500' }}>{bucketStatus.values}</span></span>
-                    <span>{t('history')}: <span style={{ color: 'var(--text-primary)', fontWeight: '500' }}>{bucketStatus.history}</span></span>
-                    <span>{t('ttl')}: <span style={{ color: 'var(--text-primary)', fontWeight: '500' }}>{bucketStatus.ttl || 'None'}</span></span>
-                    <span>{t('storage')}: <span style={{ color: 'var(--text-primary)', fontWeight: '500' }}>{bucketStatus.storage}</span></span>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem', flexShrink: 0 }}>
+                    <div style={{ display: 'flex', gap: '1.5rem', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                      <span>{t('values')}: <span style={{ color: 'var(--text-primary)', fontWeight: '500' }}>{bucketStatus.values}</span></span>
+                      <span>{t('max_history_per_key')}: <span style={{ color: 'var(--text-primary)', fontWeight: '500' }}>{bucketStatus.history}</span></span>
+                      <span>{t('ttl')}: <span style={{ color: 'var(--text-primary)', fontWeight: '500' }}>{bucketStatus.ttl || 'None'}</span></span>
+                      <span>{t('storage')}: <span style={{ color: 'var(--text-primary)', fontWeight: '500' }}>{bucketStatus.storage}</span></span>
+                    </div>
+                    {bucketStatus.metadata && Object.keys(bucketStatus.metadata).length > 0 && (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem', alignItems: 'center' }}>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{t('metadata')}:</span>
+                        {Object.entries(bucketStatus.metadata).map(([k, v]) => (
+                          <span key={k} className="status-badge" style={{ fontSize: '0.7rem', backgroundColor: 'var(--bg-color)', border: '1px solid var(--border-color)', color: 'var(--text-secondary)', padding: '0.1rem 0.35rem' }}>
+                            {k}: {String(v)}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -420,7 +432,7 @@ const KV: React.FC = () => {
                               className="btn btn-secondary custom-tooltip" 
                               style={{ padding: '0.35rem', color: 'var(--error-color)' }} 
                               onClick={() => {
-                                if (confirm(`Delete key ${k}?`)) {
+                                if (confirm(t('delete_key_confirm', { key: k }))) {
                                   apiClient.deleteKVKey(activeConnection.id, selectedBucket, k)
                                     .then(() => {
                                       setOffset(0);

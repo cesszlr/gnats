@@ -45,7 +45,12 @@ export const ConnectionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
   }, [lang, i18n]);
 
+  const isFirstRender = useRef(true);
   useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
     if (activeConnection) {
       localStorage.setItem('gnats-active-connection-id', activeConnection.id);
     } else {

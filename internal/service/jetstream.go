@@ -101,4 +101,3 @@ func (s *JetStreamService) DeleteConsumer(ctx context.Context, client *internaln
 	}
 	return stream.DeleteConsumer(ctx, consumerName)
 }
-

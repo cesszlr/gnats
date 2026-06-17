@@ -120,6 +120,7 @@ func (a *API) Routes() chi.Router {
 		r.Delete("/connections/{id}/object-store/{bucket}", a.DeleteObjectStore)
 		r.Get("/connections/{id}/object-store/{bucket}/status", a.GetObjectStoreStatus)
 		r.Get("/connections/{id}/object-store/{bucket}/objects", a.ListObjects)
+		r.Get("/connections/{id}/object-store/{bucket}/objects/{key}", a.DownloadObject)
 		r.Delete("/connections/{id}/object-store/{bucket}/objects/{key}", a.DeleteObject)
 
 		r.Get("/connections/{id}/services", a.ListServices)

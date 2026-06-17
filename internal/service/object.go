@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"strings"
 
 	internalnats "gnats/internal/nats"
 
@@ -35,15 +36,49 @@ func (s *ObjectService) DeleteBucket(ctx context.Context, client *internalnats.C
 	return client.JS.DeleteObjectStore(ctx, bucket)
 }
 
-func (s *ObjectService) GetStatus(ctx context.Context, client *internalnats.Client, bucket string) (jetstream.ObjectStoreStatus, error) {
+func (s *ObjectService) GetStatus(ctx context.Context, client *internalnats.Client, bucket string) (interface{}, error) {
 	obs, err := client.JS.ObjectStore(ctx, bucket)
 	if err != nil {
 		return nil, err
 	}
-	return obs.Status(ctx)
+	status, err := obs.Status(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	ttl := "None"
+	if status.TTL() > 0 {
+		ttl = status.TTL().String()
+	}
+
+	storage := "File"
+	if status.Storage() == jetstream.MemoryStorage {
+		storage = "Memory"
+	}
+
+	return map[string]interface{}{
+		"bucket":        status.Bucket(),
+		"description":   status.Description(),
+		"ttl":           ttl,
+		"storage":       storage,
+		"backing_store": status.BackingStore(),
+		"size":          status.Size(),
+		"replicas":      status.Replicas(),
+		"is_compressed": status.IsCompressed(),
+		"sealed":        status.Sealed(),
+		"metadata":      status.Metadata(),
+	}, nil
 }
 
-func (s *ObjectService) ListObjects(ctx context.Context, client *internalnats.Client, bucket string) ([]interface{}, error) {
+func (s *ObjectService) GetObject(ctx context.Context, client *internalnats.Client, bucket string, key string) (jetstream.ObjectResult, error) {
+	obs, err := client.JS.ObjectStore(ctx, bucket)
+	if err != nil {
+		return nil, err
+	}
+	return obs.Get(ctx, key)
+}
+
+func (s *ObjectService) ListObjects(ctx context.Context, client *internalnats.Client, bucket string, search string, offset, limit int) (interface{}, error) {
 	obs, err := client.JS.ObjectStore(ctx, bucket)
 	if err != nil {
 		return nil, err
@@ -52,16 +87,38 @@ func (s *ObjectService) ListObjects(ctx context.Context, client *internalnats.Cl
 	list, err := obs.List(ctx)
 	if err != nil {
 		if err == jetstream.ErrNoObjectsFound {
-			return []interface{}{}, nil
+			return map[string]interface{}{
+				"objects": []interface{}{},
+				"hasMore": false,
+			}, nil
 		}
 		return nil, err
 	}
 
 	var result []interface{}
+	count := 0
+	matchedCount := 0
+	hasMore := false
+
+	searchLower := strings.ToLower(search)
+
 	for _, obj := range list {
-		result = append(result, obj)
+		if search == "" || strings.Contains(strings.ToLower(obj.Name), searchLower) {
+			if matchedCount >= offset && count < limit {
+				result = append(result, obj)
+				count++
+			} else if matchedCount >= offset+limit {
+				hasMore = true
+				break
+			}
+			matchedCount++
+		}
 	}
-	return result, nil
+
+	return map[string]interface{}{
+		"objects": result,
+		"hasMore": hasMore,
+	}, nil
 }
 
 func (s *ObjectService) DeleteObject(ctx context.Context, client *internalnats.Client, bucket string, key string) error {

@@ -257,4 +257,3 @@ func (a *API) GetStreamMessagesSSE(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 }
-

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useConnection } from '../contexts/ConnectionContext';
 import { apiClient } from '../api/client';
-import { Plus, Trash2, Eye, Eraser, List, Box, Search, BarChart2, RefreshCcw, Play, Pause } from 'lucide-react';
+import { Plus, Trash2, Eye, Eraser, Box, Search, BarChart2, RefreshCcw, Play, Pause, Info } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import Modal from '../components/Modal';
@@ -52,6 +52,16 @@ const JetStream: React.FC = () => {
   const { activeConnection } = useConnection();
   const { t } = useTranslation();
   const { showToast } = useToast();
+
+  const formatBytes = (bytes: number) => {
+    if (!bytes && bytes !== 0) return '0 B';
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
   const [streams, setStreams] = useState<StreamInfo[]>([]);
   const [loading, setLoading] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
@@ -65,7 +75,7 @@ const JetStream: React.FC = () => {
   });
   const [viewingStream, setViewingStream] = useState<string | null>(null);
   const [messages, setMessages] = useState<StreamMessage[]>([]);
-  const [expandedStream, setExpandedStream] = useState<string | null>(null);
+  const [purgingStream, setPurgingStream] = useState<string | null>(null);
   const [consumers, setConsumers] = useState<ConsumerInfo[]>([]);
   const [loadingConsumers, setLoadingConsumers] = useState(false);
   const [viewingConsumers, setViewingConsumers] = useState<string | null>(null);
@@ -89,6 +99,7 @@ const JetStream: React.FC = () => {
   const [detailsConsumerName, setDetailsConsumerName] = useState('');
   const [selectedConsumerInfo, setSelectedConsumerInfo] = useState<any>(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
+  const [viewingStreamDetails, setViewingStreamDetails] = useState<any>(null);
   const [messagesPolling, setMessagesPolling] = useState(false);
   const [polledCount, setPolledCount] = useState(0);
   const sseRef = useRef<EventSource | null>(null);
@@ -107,7 +118,6 @@ const JetStream: React.FC = () => {
     loadStreams();
     setViewingStream(null);
     setViewingConsumers(null);
-    setExpandedStream(null);
     setMessages([]);
     messagesRef.current = [];
     startSeqRef.current = 0;
@@ -185,7 +195,7 @@ const JetStream: React.FC = () => {
   };
 
   const handleDelete = async (name: string) => {
-    if (!activeConnection || !confirm(`Delete stream ${name}?`)) return;
+    if (!activeConnection || !confirm(t('delete_stream_confirm', { name }))) return;
     try {
       await apiClient.deleteStream(activeConnection.id, name);
       loadStreams();
@@ -194,11 +204,18 @@ const JetStream: React.FC = () => {
     }
   };
 
-  const handlePurge = async (name: string) => {
-    if (!activeConnection || !confirm(`Purge all messages in stream ${name}?`)) return;
+  const handlePurge = (name: string) => {
+    setPurgingStream(name);
+  };
+
+  const handlePurgeConfirm = async () => {
+    if (!activeConnection || !purgingStream) return;
+    const name = purgingStream;
+    setPurgingStream(null);
     try {
       await apiClient.purgeStream(activeConnection.id, name);
       loadStreams();
+      showToast(t('purge_success') || 'Purged successfully', 'success');
     } catch (err: any) {
       showToast(err.message || String(err), 'error');
     }
@@ -527,7 +544,7 @@ const JetStream: React.FC = () => {
               {/* 左栏：配置参数 */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                 <h5 style={{ margin: '0 0 0.5rem 0', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.25rem', textTransform: 'uppercase' }}>
-                  配置参数
+                  {t('configuration')}
                 </h5>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem' }}>
                   <span style={{ color: 'var(--text-secondary)' }}>{t('deliver_policy')}:</span>
@@ -546,7 +563,7 @@ const JetStream: React.FC = () => {
                   <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{selectedConsumerInfo.config.max_deliver}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem' }}>
-                  <span style={{ color: 'var(--text-secondary)' }}>创建时间:</span>
+                  <span style={{ color: 'var(--text-secondary)' }}>{t('started')}:</span>
                   <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>
                     {selectedConsumerInfo.created ? new Date(selectedConsumerInfo.created).toLocaleString() : '-'}
                   </span>
@@ -556,7 +573,7 @@ const JetStream: React.FC = () => {
               {/* 右栏：运行状态指标 */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                 <h5 style={{ margin: '0 0 0.5rem 0', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.25rem', textTransform: 'uppercase' }}>
-                  运行状态
+                  {t('runtime_status')}
                 </h5>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem' }}>
                   <span style={{ color: 'var(--text-secondary)' }}>Pending:</span>
@@ -574,7 +591,7 @@ const JetStream: React.FC = () => {
                 {/* 针对 Push 模式的投递 Subject */}
                 {selectedConsumerInfo.config.deliver_subject && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem', fontSize: '0.8rem' }}>
-                    <span style={{ color: 'var(--text-secondary)' }}>投递主题 (Push):</span>
+                    <span style={{ color: 'var(--text-secondary)' }}>{t('deliver_subject')}:</span>
                     <span style={{ color: 'var(--text-primary)', fontWeight: 600, wordBreak: 'break-all' }}>
                       {selectedConsumerInfo.config.deliver_subject}
                     </span>
@@ -584,7 +601,7 @@ const JetStream: React.FC = () => {
                 {/* 针对 Pull 模式的等待拉取请求数 */}
                 {!selectedConsumerInfo.config.deliver_subject && selectedConsumerInfo.num_waiting !== undefined && (
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem' }}>
-                    <span style={{ color: 'var(--text-secondary)' }}>等待拉取请求数:</span>
+                    <span style={{ color: 'var(--text-secondary)' }}>{t('waiting_requests')}:</span>
                     <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{selectedConsumerInfo.num_waiting}</span>
                   </div>
                 )}
@@ -592,7 +609,7 @@ const JetStream: React.FC = () => {
                 {/* 最大 Ack Pending 限制数 */}
                 {selectedConsumerInfo.config.max_ack_pending !== undefined && (
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem' }}>
-                    <span style={{ color: 'var(--text-secondary)' }}>最大确认等待限制:</span>
+                    <span style={{ color: 'var(--text-secondary)' }}>{t('max_ack_pending')}:</span>
                     <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{selectedConsumerInfo.config.max_ack_pending}</span>
                   </div>
                 )}
@@ -617,6 +634,20 @@ const JetStream: React.FC = () => {
                   {selectedConsumerInfo.config.filter_subjects.map((sub: string) => (
                     <span key={sub} style={{ fontSize: '0.75rem', padding: '0.2rem 0.5rem', background: 'rgba(59, 130, 246, 0.1)', color: 'var(--accent-color)', borderRadius: '4px', fontWeight: 600 }}>
                       {sub}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* 消费者元数据 (如有) */}
+            {selectedConsumerInfo.config.metadata && Object.keys(selectedConsumerInfo.config.metadata).length > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', marginTop: '0.5rem' }}>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Metadata</span>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem', marginTop: '0.25rem' }}>
+                  {Object.entries(selectedConsumerInfo.config.metadata).map(([k, v]) => (
+                    <span key={k} className="status-badge" style={{ fontSize: '0.7rem', backgroundColor: 'var(--bg-color)', border: '1px solid var(--border-color)', color: 'var(--text-secondary)', padding: '0.15rem 0.4rem' }}>
+                      {k}: {String(v)}
                     </span>
                   ))}
                 </div>
@@ -710,6 +741,144 @@ const JetStream: React.FC = () => {
         </div>
       </Modal>
 
+      {viewingStreamDetails && (
+        <Modal
+          isOpen={true}
+          onClose={() => setViewingStreamDetails(null)}
+          title={`${t('details') || 'Details'}: ${viewingStreamDetails.config.name}`}
+          width="620px"
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', maxHeight: '70vh', overflowY: 'auto', paddingRight: '0.25rem' }}>
+            {/* Description */}
+            {viewingStreamDetails.config.description && (
+              <div style={{ padding: '0.75rem', backgroundColor: 'var(--bg-color)', borderLeft: '3px solid var(--accent-color)', borderRadius: '4px', fontSize: '0.875rem' }}>
+                <strong>{t('description') || 'Description'}:</strong> {viewingStreamDetails.config.description}
+              </div>
+            )}
+
+            {/* Metadata Section */}
+            <div>
+              <div style={{ fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                {t('metadata')}
+              </div>
+              {viewingStreamDetails.config.metadata && Object.keys(viewingStreamDetails.config.metadata).length > 0 ? (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem' }}>
+                  {Object.entries(viewingStreamDetails.config.metadata).map(([k, v]) => (
+                    <span key={k} className="status-badge" style={{ fontSize: '0.75rem', backgroundColor: 'var(--bg-color)', border: '1px solid var(--border-color)', color: 'var(--text-secondary)', padding: '0.2rem 0.5rem' }}>
+                      {k}: {String(v)}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', fontStyle: 'italic' }}>None</div>
+              )}
+            </div>
+
+            {/* Configuration Details Grid */}
+            <div>
+              <div style={{ fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                {t('configuration')}
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', fontSize: '0.85rem' }}>
+                <div style={{ padding: '0.5rem', borderBottom: '1px solid var(--border-color)' }}>
+                  <span style={{ color: 'var(--text-secondary)' }}>{t('storage')}:</span>
+                  <strong style={{ float: 'right' }}>{viewingStreamDetails.config.storage === 'file' ? 'File' : 'Memory'}</strong>
+                </div>
+                <div style={{ padding: '0.5rem', borderBottom: '1px solid var(--border-color)' }}>
+                  <span style={{ color: 'var(--text-secondary)' }}>{t('retention')}:</span>
+                  <strong style={{ float: 'right' }}>{viewingStreamDetails.config.retention}</strong>
+                </div>
+                <div style={{ padding: '0.5rem', borderBottom: '1px solid var(--border-color)' }}>
+                  <span style={{ color: 'var(--text-secondary)' }}>{t('max_messages')}:</span>
+                  <strong style={{ float: 'right' }}>{viewingStreamDetails.config.max_msgs === -1 ? 'Unlimited' : viewingStreamDetails.config.max_msgs}</strong>
+                </div>
+                <div style={{ padding: '0.5rem', borderBottom: '1px solid var(--border-color)' }}>
+                  <span style={{ color: 'var(--text-secondary)' }}>{t('max_bytes')}:</span>
+                  <strong style={{ float: 'right' }}>{viewingStreamDetails.config.max_bytes === -1 ? 'Unlimited' : formatBytes(viewingStreamDetails.config.max_bytes)}</strong>
+                </div>
+                <div style={{ padding: '0.5rem', borderBottom: '1px solid var(--border-color)' }}>
+                  <span style={{ color: 'var(--text-secondary)' }}>{t('max_age')}:</span>
+                  <strong style={{ float: 'right' }}>{viewingStreamDetails.config.max_age === 0 ? 'Unlimited' : (viewingStreamDetails.config.max_age / 1000000000 / 3600).toFixed(1) + ' hrs'}</strong>
+                </div>
+                <div style={{ padding: '0.5rem', borderBottom: '1px solid var(--border-color)' }}>
+                  <span style={{ color: 'var(--text-secondary)' }}>{t('replicas')}:</span>
+                  <strong style={{ float: 'right' }}>{viewingStreamDetails.config.num_replicas || 1}</strong>
+                </div>
+                <div style={{ padding: '0.5rem', borderBottom: '1px solid var(--border-color)', gridColumn: 'span 2' }}>
+                  <span style={{ color: 'var(--text-secondary)' }}>{t('subjects')}:</span>
+                  <div style={{ marginTop: '0.25rem', fontFamily: 'monospace', fontSize: '0.8rem', backgroundColor: 'var(--bg-color)', padding: '0.5rem', borderRadius: '4px', wordBreak: 'break-all' }}>
+                    {viewingStreamDetails.config.subjects.join(', ')}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* State Statistics */}
+            <div>
+              <div style={{ fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                {t('state_statistics')}
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', fontSize: '0.85rem' }}>
+                <div style={{ padding: '0.5rem', borderBottom: '1px solid var(--border-color)' }}>
+                  <span style={{ color: 'var(--text-secondary)' }}>{t('total_messages')}:</span>
+                  <strong style={{ float: 'right' }}>{viewingStreamDetails.state.messages.toLocaleString()}</strong>
+                </div>
+                <div style={{ padding: '0.5rem', borderBottom: '1px solid var(--border-color)' }}>
+                  <span style={{ color: 'var(--text-secondary)' }}>{t('total_bytes')}:</span>
+                  <strong style={{ float: 'right' }}>{formatBytes(viewingStreamDetails.state.bytes)}</strong>
+                </div>
+                <div style={{ padding: '0.5rem', borderBottom: '1px solid var(--border-color)' }}>
+                  <span style={{ color: 'var(--text-secondary)' }}>{t('first_seq')}:</span>
+                  <strong style={{ float: 'right' }}>{viewingStreamDetails.state.first_seq}</strong>
+                </div>
+                <div style={{ padding: '0.5rem', borderBottom: '1px solid var(--border-color)' }}>
+                  <span style={{ color: 'var(--text-secondary)' }}>{t('last_seq')}:</span>
+                  <strong style={{ float: 'right' }}>{viewingStreamDetails.state.last_seq}</strong>
+                </div>
+                <div style={{ padding: '0.5rem', borderBottom: '1px solid var(--border-color)' }}>
+                  <span style={{ color: 'var(--text-secondary)' }}>{t('consumers')}:</span>
+                  <strong style={{ float: 'right' }}>{viewingStreamDetails.state.consumer_count}</strong>
+                </div>
+                {viewingStreamDetails.cluster && (
+                  <div style={{ padding: '0.5rem', borderBottom: '1px solid var(--border-color)' }}>
+                    <span style={{ color: 'var(--text-secondary)' }}>{t('cluster_leader')}:</span>
+                    <strong style={{ float: 'right' }}>{viewingStreamDetails.cluster.leader}</strong>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1.5rem' }}>
+            <button className="btn btn-secondary" onClick={() => setViewingStreamDetails(null)}>
+              {t('close') || '关闭'}
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {purgingStream && (
+        <Modal
+          isOpen={true}
+          onClose={() => setPurgingStream(null)}
+          title={t('purge')}
+          width="400px"
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            <p style={{ margin: 0, fontSize: '0.95rem', color: 'var(--text-primary)', lineHeight: 1.5 }}>
+              {t('purge_stream_confirm', { name: purgingStream })}
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem' }}>
+              <button className="btn btn-secondary" onClick={() => setPurgingStream(null)}>
+                {t('cancel')}
+              </button>
+              <button className="btn btn-danger" onClick={handlePurgeConfirm} style={{ backgroundColor: 'var(--error-color)', color: 'white' }}>
+                {t('purge')}
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
       {streams.length > 0 && (
         <div className="card animate-fade-in" style={{ marginBottom: '2rem', padding: '1.25rem', flexShrink: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', color: 'var(--text-secondary)', fontSize: '0.875rem', fontWeight: 600 }}>
@@ -766,8 +935,8 @@ const JetStream: React.FC = () => {
                     <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>{s.config.subjects.join(', ')}</p>
                   </div>
                   <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <button className="btn btn-secondary custom-tooltip" data-tooltip={t('info')} onClick={() => setViewingStreamDetails(s)}><Info size={18} /></button>
                     <button className="btn btn-secondary custom-tooltip" data-tooltip={t('consumers')} onClick={() => loadConsumers(s.config.name)} style={{ backgroundColor: viewingConsumers === s.config.name ? 'var(--accent-color)' : '', color: viewingConsumers === s.config.name ? 'white' : '' }}><Box size={18} /></button>
-                    <button className="btn btn-secondary custom-tooltip" data-tooltip={t('subjects')} onClick={() => setExpandedStream(expandedStream === s.config.name ? null : s.config.name)}><List size={18} /></button>
                     <button className="btn btn-secondary custom-tooltip" data-tooltip={t('view_messages')} onClick={() => loadMessages(s.config.name)}><Eye size={18} /></button>
                     <button className="btn btn-secondary custom-tooltip" data-tooltip={t('purge')} onClick={() => handlePurge(s.config.name)}><Eraser size={18} /></button>
                     <button className="btn btn-secondary custom-tooltip" style={{ color: 'var(--error-color)' }} data-tooltip={t('delete')} onClick={() => handleDelete(s.config.name)}><Trash2 size={18} /></button>
@@ -902,16 +1071,6 @@ const JetStream: React.FC = () => {
                   </div>
                 )}
                 
-                {expandedStream === s.config.name && (
-                  <div className="animate-fade-in" style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border-color)' }}>
-                    <h4 style={{ marginBottom: '0.75rem', fontSize: '0.875rem' }}>{t('subjects')}</h4>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                      {s.config.subjects.map(sub => (
-                        <span key={sub} style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem', background: 'rgba(59, 130, 246, 0.1)', color: 'var(--accent-color)', borderRadius: '4px', fontWeight: '500' }}>{sub}</span>
-                      ))}
-                    </div>
-                  </div>
-                )}
               </div>
             ))}
           </div>
