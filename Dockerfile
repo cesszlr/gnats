@@ -15,7 +15,7 @@ RUN go mod download
 COPY . .
 COPY --from=frontend-builder /app/ui/dist ./ui/dist
 
-RUN go build -o gnats main.go
+RUN go build -o gnats cmd/gnats/main.go
 
 # Stage 3: Final Runtime
 FROM alpine:3.22.4

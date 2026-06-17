@@ -64,7 +64,7 @@ jobs:
             fi
 
             echo "Building for $GOOS/$GOARCH..."
-            GOOS=$GOOS GOARCH=$GOARCH go build -ldflags="-s -w" -o "build/$output_name" main.go
+            GOOS=$GOOS GOARCH=$GOARCH go build -ldflags="-s -w" -o "build/$output_name" cmd/gnats/main.go
           done
 
       - name: Create Release

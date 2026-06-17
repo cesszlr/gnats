@@ -1,7 +1,7 @@
 package main
 
 import (
-	"embed"
+	"bufio"
 	"io/fs"
 	"log"
 	"net/http"
@@ -11,15 +11,52 @@ import (
 
 	"gnats/internal/handlers"
 	"gnats/internal/nats"
+	"gnats/ui"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 )
 
-//go:embed ui/dist/*
-var embeddedFiles embed.FS
+func loadEnv() {
+	// Try current directory
+	if loadEnvFile(".env") {
+		return
+	}
+	// Try project root (two levels up if run from cmd/gnats)
+	loadEnvFile("../../.env")
+}
+
+func loadEnvFile(path string) bool {
+	file, err := os.Open(path)
+	if err != nil {
+		return false
+	}
+	defer file.Close()
+
+	log.Printf("Loading environment variables from %s", path)
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		parts := strings.SplitN(line, "=", 2)
+		if len(parts) == 2 {
+			key := strings.TrimSpace(parts[0])
+			val := strings.TrimSpace(parts[1])
+			val = strings.Trim(val, `"'`)
+			// Only set if not already set by environment
+			if os.Getenv(key) == "" {
+				os.Setenv(key, val)
+			}
+		}
+	}
+	return true
+}
 
 func main() {
+	loadEnv()
+
 	manager := nats.NewManager()
 	api := handlers.NewAPI(manager)
 	ws := handlers.NewWSHandler(manager)
@@ -38,12 +75,20 @@ func main() {
 
 	// Check if we should use local files (development) or embedded files (production)
 	if os.Getenv("DEBUG") == "true" {
-		log.Println("Development mode: serving static files from ui/dist")
 		workDir, _ := os.Getwd()
-		staticFS = http.Dir(filepath.Join(workDir, "ui/dist"))
+		path := filepath.Join(workDir, "ui/dist")
+		if _, err := os.Stat(path); err != nil {
+			// Try parent directory (e.g. if running from cmd/gnats)
+			altPath := filepath.Join(workDir, "../../ui/dist")
+			if _, err := os.Stat(altPath); err == nil {
+				path = altPath
+			}
+		}
+		log.Printf("Development mode: serving static files from %s\n", path)
+		staticFS = http.Dir(path)
 	} else {
 		// Use embedded files
-		sub, err := fs.Sub(embeddedFiles, "ui/dist")
+		sub, err := fs.Sub(ui.EmbeddedFiles, "dist")
 		if err != nil {
 			log.Fatal(err)
 		}

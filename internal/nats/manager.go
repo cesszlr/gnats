@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
@@ -15,10 +16,25 @@ import (
 )
 
 func getConfigPath() string {
-	if path := os.Getenv("CONNECTIONS_FILE"); path != "" {
+	path := os.Getenv("CONNECTIONS_FILE")
+	if path == "" {
+		path = "connections.json"
+	}
+
+	// If the file exists, use it directly
+	if _, err := os.Stat(path); err == nil {
 		return path
 	}
-	return "connections.json"
+
+	// If not found and it's a relative path, try finding it relative to project root (e.g. if run from cmd/gnats)
+	if !filepath.IsAbs(path) {
+		altPath := filepath.Join("../..", path)
+		if _, err := os.Stat(altPath); err == nil {
+			return altPath
+		}
+	}
+
+	return path
 }
 
 // ConnectionConfig represents a NATS connection configuration
