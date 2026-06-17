@@ -191,7 +191,15 @@ const resources = {
       "rollback": "Rollback",
       "no_history": "No history recorded",
       "empty_value": "No Value",
-      "current": "Current"
+      "current": "Current",
+      "diff": "Diff",
+      "compare": "Compare",
+      "left_version": "Left Version",
+      "right_version": "Right Version",
+      "compare_versions": "Compare Versions",
+      "select_version": "Select Version",
+      "original": "Original",
+      "modified": "Modified"
     }
   },
   zh: {
@@ -382,7 +390,15 @@ const resources = {
       "rollback": "回滚",
       "no_history": "暂无历史版本记录",
       "empty_value": "无内容",
-      "current": "当前版本"
+      "current": "当前版本",
+      "diff": "差异比对",
+      "compare": "对比",
+      "left_version": "左侧版本",
+      "right_version": "右侧版本",
+      "compare_versions": "版本比对",
+      "select_version": "选择版本",
+      "original": "原始内容",
+      "modified": "修改内容"
     }
   }
 };

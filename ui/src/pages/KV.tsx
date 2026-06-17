@@ -11,6 +11,7 @@ import { vscodeDark, vscodeLight } from '@uiw/codemirror-theme-vscode';
 import { AddBucketModal } from '../components/AddBucketModal';
 import { PutKeyModal } from '../components/PutKeyModal';
 import Modal from '../components/Modal';
+import { KVDiffViewer } from '../components/KVDiffViewer';
 
 const KV: React.FC = () => {
   const { activeConnection, theme } = useConnection();
@@ -36,8 +37,10 @@ const KV: React.FC = () => {
 
   const [history, setHistory] = useState<any[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
-  const [activeTab, setActiveTab] = useState<'value' | 'history'>('value');
+  const [activeTab, setActiveTab] = useState<'value' | 'history' | 'diff'>('value');
   const [expandedRev, setExpandedRev] = useState<number | null>(null);
+  const [diffLeftRev, setDiffLeftRev] = useState<number | null>(null);
+  const [diffRightRev, setDiffRightRev] = useState<number | null>(null);
 
   const extensions = useMemo(() => {
     if (formatMode === 'json') return [json()];
@@ -61,6 +64,8 @@ const KV: React.FC = () => {
     setLoadingHistory(false);
     setActiveTab('value');
     setExpandedRev(null);
+    setDiffLeftRev(null);
+    setDiffRightRev(null);
     setBucketSearch('');
     setKeySearch('');
     setOffset(0);
@@ -182,6 +187,13 @@ const KV: React.FC = () => {
       try {
         const histData = await apiClient.getKVKeyHistory(activeConnection.id, bucket, key);
         setHistory(histData || []);
+        if (histData && histData.length > 0) {
+          setDiffRightRev(data.rev || histData[0].rev);
+          setDiffLeftRev(histData[1]?.rev || histData[0].rev);
+        } else {
+          setDiffLeftRev(null);
+          setDiffRightRev(null);
+        }
       } catch (histErr) {
         console.error("Failed to load key history:", histErr);
         setHistory([]);
@@ -209,6 +221,10 @@ const KV: React.FC = () => {
       try {
         const histData = await apiClient.getKVKeyHistory(activeConnection.id, selectedBucket, viewingKey.key);
         setHistory(histData || []);
+        if (histData && histData.length > 0) {
+          setDiffRightRev(data.rev || histData[0].rev);
+          setDiffLeftRev(histData[1]?.rev || histData[0].rev);
+        }
       } catch (histErr) {
         console.error(histErr);
       } finally {
@@ -455,18 +471,23 @@ const KV: React.FC = () => {
       >
         {viewingKey && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <div style={{ display: 'flex', gap: '1rem', borderBottom: '1px solid var(--border-color)', marginBottom: '0.5rem' }}>
+            <div style={{ position: 'relative', display: 'flex', borderBottom: '1px solid var(--border-color)', marginBottom: '0.5rem' }}>
               <button 
                 className={`tab-btn`} 
                 onClick={() => setActiveTab('value')}
                 style={{
-                  padding: '0.5rem 1rem',
+                  width: '100px',
+                  height: '40px',
                   background: 'none',
                   border: 'none',
-                  borderBottom: activeTab === 'value' ? '2px solid var(--accent-color)' : '2px solid transparent',
                   color: activeTab === 'value' ? 'var(--text-primary)' : 'var(--text-secondary)',
                   fontWeight: activeTab === 'value' ? '600' : 'normal',
-                  cursor: 'pointer'
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '0.9rem',
+                  transition: 'color 0.2s'
                 }}
               >
                 {t('value') || 'Value'}
@@ -475,20 +496,56 @@ const KV: React.FC = () => {
                 className={`tab-btn`} 
                 onClick={() => setActiveTab('history')}
                 style={{
-                  padding: '0.5rem 1rem',
+                  width: '120px',
+                  height: '40px',
                   background: 'none',
                   border: 'none',
-                  borderBottom: activeTab === 'history' ? '2px solid var(--accent-color)' : '2px solid transparent',
                   color: activeTab === 'history' ? 'var(--text-primary)' : 'var(--text-secondary)',
                   fontWeight: activeTab === 'history' ? '600' : 'normal',
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '0.25rem'
+                  justifyContent: 'center',
+                  gap: '0.35rem',
+                  fontSize: '0.9rem',
+                  transition: 'color 0.2s'
                 }}
               >
                 {t('history') || 'History'} {history.length > 0 && <span style={{ fontSize: '0.75rem', padding: '0.1rem 0.4rem', borderRadius: '10px', background: 'var(--border-color)', color: 'var(--text-primary)' }}>{history.length}</span>}
               </button>
+              <button 
+                className={`tab-btn`} 
+                onClick={() => setActiveTab('diff')}
+                style={{
+                  width: '100px',
+                  height: '40px',
+                  background: 'none',
+                  border: 'none',
+                  color: activeTab === 'diff' ? 'var(--text-primary)' : 'var(--text-secondary)',
+                  fontWeight: activeTab === 'diff' ? '600' : 'normal',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '0.9rem',
+                  transition: 'color 0.2s'
+                }}
+              >
+                {t('diff') || 'Diff'}
+              </button>
+              
+              <div 
+                style={{
+                  position: 'absolute',
+                  bottom: 0,
+                  left: 0,
+                  height: '2px',
+                  backgroundColor: 'var(--accent-color)',
+                  transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                  width: activeTab === 'value' ? '100px' : activeTab === 'history' ? '120px' : '100px',
+                  transform: activeTab === 'value' ? 'translateX(0)' : activeTab === 'history' ? 'translateX(100px)' : 'translateX(220px)'
+                }}
+              />
             </div>
 
             {activeTab === 'value' ? (
@@ -526,7 +583,7 @@ const KV: React.FC = () => {
                   )}
                 </div>
               </div>
-            ) : (
+            ) : activeTab === 'history' ? (
               <div style={{ maxHeight: '350px', overflowY: 'auto' }}>
                 {loadingHistory ? (
                   <div style={{ padding: '2rem', textAlign: 'center' }}>
@@ -540,7 +597,7 @@ const KV: React.FC = () => {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                     {history.map((h: any) => {
                       const isCurrent = h.rev === viewingKey.rev;
-                      const isPut = h.operation === 'KeyValuePut' || h.operation === 'PUT';
+                      const isPut = h.operation === 'KeyValuePut' || h.operation === 'PUT' || h.operation === 'KeyValuePutOp' || h.operation?.toLowerCase().includes('put');
                       const isExpanded = expandedRev === h.rev;
 
                       return (
@@ -593,6 +650,17 @@ const KV: React.FC = () => {
                               >
                                 {isExpanded ? (t('hide') || 'Hide') : (t('view') || 'View')}
                               </button>
+                              <button 
+                                className="btn btn-secondary" 
+                                style={{ padding: '0.25rem 0.5rem', fontSize: '0.8rem' }}
+                                onClick={() => {
+                                  setDiffLeftRev(h.rev);
+                                  setDiffRightRev(viewingKey.rev || (history.length > 0 ? history[0].rev : null));
+                                  setActiveTab('diff');
+                                }}
+                              >
+                                {t('diff') || 'Diff'}
+                              </button>
                               {isPut && !isCurrent && (
                                   <button 
                                     className="btn btn-primary" 
@@ -637,6 +705,55 @@ const KV: React.FC = () => {
                     })}
                   </div>
                 )}
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'nowrap', background: 'var(--bg-secondary)', padding: '0.75rem', borderRadius: 'var(--radius-sm)', overflowX: 'auto' }}>
+                  <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap', flexShrink: 0, display: 'inline-block', lineHeight: '1' }}>{t('left_version') || 'Left Version'}:</span>
+                  <select
+                    className="input"
+                    style={{ padding: '0.25rem 0.5rem', width: '200px', fontSize: '0.85rem', height: '32px', boxSizing: 'border-box', margin: 0, flexShrink: 0 }}
+                    value={diffLeftRev || ''}
+                    onChange={e => setDiffLeftRev(Number(e.target.value) || null)}
+                  >
+                    <option value="">-- {t('select_version') || 'Select Version'} --</option>
+                    {history.map(h => {
+                      const isPut = h.operation === 'KeyValuePut' || h.operation === 'PUT' || h.operation === 'KeyValuePutOp' || h.operation?.toLowerCase().includes('put');
+                      const opText = isPut ? 'PUT' : (t('delete') || 'DELETE');
+                      return (
+                        <option key={h.rev} value={h.rev}>
+                          #{h.rev} ({opText}) - {new Date(h.created).toLocaleTimeString()}
+                        </option>
+                      );
+                    })}
+                  </select>
+
+                  <span style={{ fontWeight: 'bold', color: 'var(--text-secondary)', flexShrink: 0, display: 'inline-flex', alignItems: 'center', alignSelf: 'center', lineHeight: '1' }}>➔</span>
+
+                  <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap', flexShrink: 0, display: 'inline-block', lineHeight: '1' }}>{t('right_version') || 'Right Version'}:</span>
+                  <select
+                    className="input"
+                    style={{ padding: '0.25rem 0.5rem', width: '200px', fontSize: '0.85rem', height: '32px', boxSizing: 'border-box', margin: 0, flexShrink: 0 }}
+                    value={diffRightRev || ''}
+                    onChange={e => setDiffRightRev(Number(e.target.value) || null)}
+                  >
+                    <option value="">-- {t('select_version') || 'Select Version'} --</option>
+                    {history.map(h => {
+                      const isPut = h.operation === 'KeyValuePut' || h.operation === 'PUT' || h.operation === 'KeyValuePutOp' || h.operation?.toLowerCase().includes('put');
+                      const opText = isPut ? 'PUT' : (t('delete') || 'DELETE');
+                      return (
+                        <option key={h.rev} value={h.rev}>
+                          #{h.rev} ({opText}) - {new Date(h.created).toLocaleTimeString()}
+                        </option>
+                      );
+                    })}
+                  </select>
+                </div>
+
+                <KVDiffViewer 
+                  oldValue={formatData(history.find(h => h.rev === diffLeftRev)?.value || '', formatMode)} 
+                  newValue={formatData(history.find(h => h.rev === diffRightRev)?.value || '', formatMode)} 
+                />
               </div>
             )}
           </div>
