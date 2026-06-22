@@ -102,6 +102,22 @@ GNATS can be configured using environment variables:
 
 ## 🚀 Quick Start
 
+### One-Click Cluster Evaluation (Docker Compose)
+
+We provide a complete, ready-to-run multi-node environment demonstrating a 3-node NATS cluster, a Leaf Node (with local storage disabled to show core routing capabilities), the `gnats` Web Console, and a demo client traffic injector.
+
+For details on the topology, logic, and how to verify, please see **[example/README.md](example/README.md)**.
+
+1. **Start Environment**:
+   ```bash
+   docker compose -f example/docker-compose.yml up -d
+   ```
+2. **Access Web Console**: Visit **`http://localhost:8085`**
+3. **Shutdown**:
+   ```bash
+   docker compose -f example/docker-compose.yml down
+   ```
+
 ### Using Docker (Recommended)
 
 The fastest way to get started. The image is extremely small as it only contains the single binary.

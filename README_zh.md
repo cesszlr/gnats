@@ -102,6 +102,22 @@ GNATS 支持通过环境变量进行配置：
 
 ## 🚀 快速上手
 
+### 一键集群评估 (Docker Compose)
+
+我们提供了一个完整的、一键启动的本地多节点评估环境，演示了包括 3 节点 NATS 主集群、去本地存储化的轻量叶子节点（展示 Core 消息及微服务路由桥接）、`gnats` 监控 UI 控制台以及 demo 客户端流量注入器。
+
+关于该环境的详细拓扑逻辑、验证计划与使用方法，请参见中文说明文档 **[example/README_zh.md](example/README_zh.md)**。
+
+1. **一键启动**：
+   ```bash
+   docker compose -f example/docker-compose.yml up -d
+   ```
+2. **访问控制台**：浏览器打开 **`http://localhost:8085`**
+3. **关闭清理**：
+   ```bash
+   docker compose -f example/docker-compose.yml down
+   ```
+
 ### 使用 Docker (推荐)
 
 这是最快的使用方式。由于采用了单文件嵌入，镜像体积极小。

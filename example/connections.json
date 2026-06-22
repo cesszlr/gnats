@@ -1,0 +1,16 @@
+[
+  {
+    "id": "leaf-node",
+    "name": "Leaf Node (nats-leaf)",
+    "url": "nats://nats-leaf:4222",
+    "status": "",
+    "insecure": false
+  },
+  {
+    "id": "main-cluster",
+    "name": "Main NATS Cluster (nats-1)",
+    "url": "nats://nats-1:4222",
+    "status": "",
+    "insecure": false
+  }
+]

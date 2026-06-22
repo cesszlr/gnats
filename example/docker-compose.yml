@@ -1,0 +1,75 @@
+services:
+  nats-1:
+    image: nats:2.14.2-alpine
+    container_name: nats-1
+    command: [ "-c", "/etc/nats/nats-1.conf" ]
+    volumes:
+      - ./nats-1.conf:/etc/nats/nats-1.conf:ro
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+    networks:
+      - nats-net
+
+  nats-2:
+    image: nats:2.14.2-alpine
+    container_name: nats-2
+    command: [ "-c", "/etc/nats/nats-2.conf" ]
+    volumes:
+      - ./nats-2.conf:/etc/nats/nats-2.conf:ro
+    networks:
+      - nats-net
+
+  nats-3:
+    image: nats:2.14.2-alpine
+    container_name: nats-3
+    command: [ "-c", "/etc/nats/nats-3.conf" ]
+    volumes:
+      - ./nats-3.conf:/etc/nats/nats-3.conf:ro
+    networks:
+      - nats-net
+
+  nats-leaf:
+    image: nats:2.14.2-alpine
+    container_name: nats-leaf
+    command: [ "-c", "/etc/nats/nats-leaf.conf" ]
+    volumes:
+      - ./nats-leaf.conf:/etc/nats/nats-leaf.conf:ro
+    ports:
+      - "4223:4222"
+    depends_on:
+      - nats-1
+    networks:
+      - nats-net
+
+  gnats:
+    build:
+      context: ../
+      dockerfile: example/Dockerfile.example
+    container_name: gnats-ui
+    environment:
+      - CONNECTIONS_FILE=/app/connections.json
+    volumes:
+      - ./connections.json:/app/connections.json
+    ports:
+      - "8085:8080"
+    depends_on:
+      - nats-1
+    networks:
+      - nats-net
+
+  demo-injector:
+    build:
+      context: ../
+      dockerfile: example/Dockerfile.example
+    container_name: demo-injector
+    command: >
+      sh -c "until nc -z nats-1 4222; do echo 'Waiting for nats-1...'; sleep 1; done; echo 'Waiting 8s for NATS cluster JetStream election...'; sleep 8; echo 'Starting demo injector...'; ./demo -url nats://nats-1:4222"
+    depends_on:
+      - nats-1
+    networks:
+      - nats-net
+
+networks:
+  nats-net:
+    driver: bridge
