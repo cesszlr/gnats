@@ -3,7 +3,7 @@ import { useConnection } from '../contexts/ConnectionContext';
 import { useToast } from '../components/Toast';
 import { apiClient } from '../api/client';
 import type { ConnectionConfig } from '../api/client';
-import { Plus, Search, Trash2, FileText, FileCode, Edit2 } from 'lucide-react';
+import { Plus, Search, Trash2, FileText, FileCode, Edit2, Server, Copy, Check, Link, Link2Off } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import Modal from '../components/Modal';
 
@@ -44,6 +44,14 @@ const Connections: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [search, setSearch] = useState('');
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  const handleCopyUrl = (id: string, url: string) => {
+    navigator.clipboard.writeText(url).then(() => {
+      setCopiedId(id);
+      setTimeout(() => setCopiedId(null), 2000);
+    });
+  };
 
   const filteredConnections = connections.filter(c => 
     c.name.toLowerCase().includes(search.toLowerCase()) || 
@@ -306,38 +314,93 @@ const Connections: React.FC = () => {
         </form>
       </Modal>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.5rem' }}>
-        {filteredConnections.map(conn => (
-          <div key={conn.id} className="card animate-fade-in" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ flex: 1 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
-                <h3 style={{ margin: 0 }}>{conn.name}</h3>
-                <span className={`status-badge ${conn.status === 'CONNECTED' ? 'status-connected' : 'status-disconnected'}`}>
+      <div className="connection-grid">
+        {filteredConnections.map(conn => {
+          const isConnected = conn.status === 'CONNECTED';
+          const hasAuth = !!(conn.user || conn.password || conn.token);
+          const hasTls = !!(conn.ca_file || conn.cert_file || conn.key_file || conn.ca_content || conn.cert_content || conn.key_content);
+          const isInsecure = !!conn.insecure;
+
+          return (
+            <div key={conn.id} className={`connection-card ${isConnected ? 'connected' : 'disconnected'} animate-fade-in`}>
+              {/* Header */}
+              <div className="connection-card-header">
+                <div className="connection-card-title-wrapper custom-tooltip" data-tooltip={conn.name}>
+                  <Server className="connection-card-icon" size={20} />
+                  <h3 className="connection-card-title">{conn.name}</h3>
+                </div>
+                <span className={`status-badge ${isConnected ? 'status-connected' : 'status-disconnected'}`} style={{ display: 'flex', alignItems: 'center' }}>
+                  {isConnected && <span className="pulse-green" style={{ marginRight: '0.375rem' }} />}
                   {conn.status}
                 </span>
               </div>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>{conn.url}</p>
+
+              {/* Body */}
+              <div className="connection-card-body">
+                <div className="connection-card-url-wrapper">
+                  <span className="connection-card-url" title={conn.url}>{conn.url}</span>
+                  <button 
+                    type="button" 
+                    className="copy-btn" 
+                    title={t('copy') || "Copy"} 
+                    onClick={() => handleCopyUrl(conn.id, conn.url)}
+                  >
+                    {copiedId === conn.id ? <Check size={14} style={{ color: 'var(--success-color)' }} /> : <Copy size={14} />}
+                  </button>
+                </div>
+                
+                <div className="connection-card-meta">
+                  {hasAuth && <span className="connection-meta-badge">AUTH</span>}
+                  {hasTls && <span className="connection-meta-badge">TLS</span>}
+                  {isInsecure && <span className="connection-meta-badge insecure">INSECURE</span>}
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="connection-card-footer">
+                <div></div>
+                <div className="connection-card-actions">
+                  <button 
+                    type="button" 
+                    className={`btn ${isConnected ? 'btn-secondary' : 'btn-primary'}`}
+                    style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem', minWidth: '90px' }}
+                    onClick={() => isConnected ? handleDisconnect(conn.id) : handleReconnect(conn)}
+                  >
+                    {isConnected ? (
+                      <>
+                        <Link2Off size={14} /> {t('disconnect') || 'Disconnect'}
+                      </>
+                    ) : (
+                      <>
+                        <Link size={14} style={{ color: 'white' }} /> {t('connect') || 'Connect'}
+                      </>
+                    )}
+                  </button>
+
+                  <button 
+                    type="button"
+                    className="btn btn-secondary" 
+                    style={{ padding: '0.45rem' }} 
+                    title={t('edit')} 
+                    onClick={() => handleEdit(conn)}
+                  >
+                    <Edit2 size={16} />
+                  </button>
+                  
+                  <button 
+                    type="button"
+                    className="btn btn-secondary" 
+                    style={{ padding: '0.45rem' }} 
+                    title={t('delete')} 
+                    onClick={() => handleDelete(conn.id)}
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              </div>
             </div>
-            <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-              <label className="switch" title={conn.status === 'CONNECTED' ? t('disconnect') : t('connect')}>
-                <input 
-                  type="checkbox" 
-                  checked={conn.status === 'CONNECTED'} 
-                  onChange={() => conn.status === 'CONNECTED' ? handleDisconnect(conn.id) : handleReconnect(conn)}
-                />
-                <span className="slider"></span>
-              </label>
-              
-              <button className="btn btn-secondary" style={{ padding: '0.5rem' }} title={t('edit')} onClick={() => handleEdit(conn)}>
-                <Edit2 size={18} />
-              </button>
-              
-              <button className="btn btn-secondary" style={{ padding: '0.5rem' }} title={t('delete')} onClick={() => handleDelete(conn.id)}>
-                <Trash2 size={18} />
-              </button>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

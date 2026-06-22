@@ -347,6 +347,11 @@ const Cluster: React.FC = () => {
       );
     }
 
+    const formatServerId = (id: string) => {
+      if (!id) return '';
+      return id.length > 16 ? `${id.substring(0, 8)}...${id.slice(-8)}` : id;
+    };
+
     return (
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: '1.5rem', marginTop: '1rem' }}>
         {allNodesStats.map((node: any) => {
@@ -379,9 +384,13 @@ const Cluster: React.FC = () => {
                         {t('unmonitored')}
                       </span>
                     </h3>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontFamily: 'monospace', wordBreak: 'break-all' }}>
-                      ID: {node.server_id}
-                    </span>
+                     <span 
+                      className="custom-tooltip" 
+                      data-tooltip={node.server_id} 
+                      style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontFamily: 'monospace', cursor: 'help', display: 'inline-block' }}
+                     >
+                       ID: {formatServerId(node.server_id)}
+                     </span>
                   </div>
                 </div>
 
@@ -431,11 +440,15 @@ const Cluster: React.FC = () => {
                       </span>
                     )}
                   </h3>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontFamily: 'monospace', wordBreak: 'break-all' }}>
-                    ID: {node.server_id}
+                  <span 
+                    className="custom-tooltip" 
+                    data-tooltip={node.server_id} 
+                    style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontFamily: 'monospace', cursor: 'help', display: 'inline-block' }}
+                  >
+                    ID: {formatServerId(node.server_id)}
                   </span>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', fontSize: '0.75rem', color: 'var(--text-secondary)', flexShrink: 0 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', fontSize: '0.75rem', color: 'var(--text-secondary)', flexShrink: 0, whiteSpace: 'nowrap' }}>
                   <span>v{node.version}</span>
                   <span>{t('uptime')}: {node.uptime}</span>
                 </div>
@@ -443,18 +456,18 @@ const Cluster: React.FC = () => {
 
               {/* Hardware Usage Row */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', backgroundColor: 'var(--bg-secondary)', padding: '0.75rem', borderRadius: '6px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <Cpu size={16} style={{ color: 'var(--text-secondary)' }} />
-                  <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 0 }}>
+                  <Cpu size={16} style={{ color: 'var(--text-secondary)', flexShrink: 0 }} />
+                  <div style={{ minWidth: 0 }}>
                     <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>CPU</div>
-                    <div style={{ fontSize: '0.9rem', fontWeight: 600 }}>{cpuUsage}% ({node.cores || 1} Cores)</div>
+                    <div style={{ fontSize: '0.9rem', fontWeight: 600, whiteSpace: 'nowrap' }}>{cpuUsage}% ({node.cores || 1} Cores)</div>
                   </div>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <HardDrive size={16} style={{ color: 'var(--text-secondary)' }} />
-                  <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 0 }}>
+                  <HardDrive size={16} style={{ color: 'var(--text-secondary)', flexShrink: 0 }} />
+                  <div style={{ minWidth: 0 }}>
                     <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>{t('memory')}</div>
-                    <div style={{ fontSize: '0.9rem', fontWeight: 600 }}>{formatBytes(node.mem || 0)}</div>
+                    <div style={{ fontSize: '0.9rem', fontWeight: 600, whiteSpace: 'nowrap' }}>{formatBytes(node.mem || 0)}</div>
                   </div>
                 </div>
               </div>

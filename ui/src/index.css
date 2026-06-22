@@ -779,4 +779,194 @@ input:checked + .slider:before {
   display: inline-block;
 }
 
+/* ==========================================================================
+   Connection Management Redesign Styles
+   ========================================================================== */
+.connection-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+}
+
+.connection-card {
+  display: flex;
+  flex-direction: column;
+  background-color: var(--card-bg);
+  border-radius: var(--radius);
+  border: 1px solid var(--border-color);
+  padding: 1.5rem;
+  box-shadow: var(--shadow);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  min-height: 220px;
+}
+
+.connection-card:hover {
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-2px);
+  border-color: rgba(59, 130, 246, 0.4);
+}
+
+/* Top status border indicator */
+.connection-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 4px;
+  background: var(--text-secondary);
+  opacity: 0.3;
+  transition: background 0.3s ease, opacity 0.3s ease;
+  border-top-left-radius: var(--radius);
+  border-top-right-radius: var(--radius);
+}
+
+.connection-card.connected::before {
+  background: linear-gradient(90deg, var(--success-color), #34d399);
+  opacity: 1;
+}
+
+.connection-card.disconnected::before {
+  background: linear-gradient(90deg, var(--error-color), #f87171);
+  opacity: 1;
+}
+
+.connection-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.connection-card-title-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.connection-card-icon {
+  flex-shrink: 0;
+  color: var(--text-secondary);
+  transition: color 0.3s ease;
+}
+
+.connection-card.connected .connection-card-icon {
+  color: var(--accent-color);
+}
+
+.connection-card-title {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.connection-card-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+.connection-card-url-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(0, 0, 0, 0.02);
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+  overflow: hidden;
+  transition: background-color 0.3s;
+}
+
+[data-theme='dark'] .connection-card-url-wrapper {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.connection-card-url {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.copy-btn {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.copy-btn:hover {
+  background: rgba(0, 0, 0, 0.05);
+  color: var(--text-primary);
+}
+
+[data-theme='dark'] .copy-btn:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.connection-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.connection-meta-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.125rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: rgba(0, 0, 0, 0.04);
+  color: var(--text-secondary);
+}
+
+[data-theme='dark'] .connection-meta-badge {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.connection-meta-badge.insecure {
+  background-color: rgba(245, 158, 11, 0.1);
+  color: var(--warning-color);
+}
+
+.connection-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid var(--border-color);
+  padding-top: 1rem;
+  margin-top: auto;
+}
+
+.connection-card-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+
 
