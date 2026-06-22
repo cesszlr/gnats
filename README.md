@@ -169,6 +169,10 @@ The fastest way to get started. The image is extremely small as it only contains
 - [x] **Consumer Lifecycle Management**: Graphical creation, detailed configuration, and operation of JetStream Consumers (including Push/Pull auto-detection).
 - [x] **Key History & Rollback**: View historical revisions of KV keys and easily rollback to past versions.
 - [x] **Key-Value Diff Viewer**: Visual side-by-side comparison of historical revisions for Key-Value entries.
+- [ ] **NATS Cluster Multi-dimensional Topology & Monitoring**: Visual cluster topological maps showing RTT, bandwidth, and status of Leafnodes and cluster routes.
+- [ ] **Microservices Debugging Panel Enhancement**: Active schema discovery via `$SRV.SCHEMA` and one-click endpoint invocation (API testing) directly in the service panel.
+- [ ] **Payload Editor Syntax Highlighting & Formatting**: Integrated rich text editor with auto-formatting and JSON/YAML validation for messaging publishers.
+- [ ] **KV Store Single Key Lifecycle Management**: Support configuring and previewing expiration/TTL settings for individual Key-Value entries.
 
 ---
 
