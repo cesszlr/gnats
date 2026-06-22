@@ -69,6 +69,10 @@ GNATS is a modern, lightweight, and powerful open-source management interface de
 ### Connection Management
 ![Connections](images/connections.png)
 
+### Cluster Topology
+![Cluster Topology](images/cluster-1.png)
+![Cluster Status](images/cluster-2.png)
+
 ### Core Pub/Sub
 ![Publish/Subscribe](images/pub-1.png)
 ![Request/Reply](images/pub-2.png)
