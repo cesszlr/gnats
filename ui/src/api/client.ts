@@ -20,11 +20,29 @@ export interface ConnectionConfig {
 }
 
 async function handleResponse<T>(res: Response): Promise<T> {
-  const json = await res.json();
-  if (!json.success) {
-    throw new Error(json.error || 'Request failed');
+  if (!res.ok) {
+    let errMsg = `Request failed with status ${res.status}`;
+    try {
+      const json = await res.json();
+      if (json && json.error) errMsg = json.error;
+    } catch {
+      try {
+        const text = await res.text();
+        if (text) errMsg = text;
+      } catch {}
+    }
+    throw new Error(errMsg);
   }
-  return json.data;
+
+  try {
+    const json = await res.json();
+    if (!json.success) {
+      throw new Error(json.error || 'Request failed');
+    }
+    return json.data;
+  } catch (err: any) {
+    throw new Error(err.message || 'Failed to parse JSON response');
+  }
 }
 
 export const apiClient = {
@@ -76,6 +94,16 @@ export const apiClient = {
   async getMonitoringConnections(id: string, sortBy?: string): Promise<any> {
     const url = sortBy ? `${BASE_URL}/connections/${id}/monitoring/connections?sort=${sortBy}` : `${BASE_URL}/connections/${id}/monitoring/connections`;
     const res = await fetch(url);
+    return handleResponse<any>(res);
+  },
+
+  async getClusterTopology(id: string): Promise<any> {
+    const res = await fetch(`${BASE_URL}/connections/${id}/monitoring/cluster`);
+    return handleResponse<any>(res);
+  },
+
+  async getClusterNodesStats(id: string): Promise<any> {
+    const res = await fetch(`${BASE_URL}/connections/${id}/monitoring/nodes`);
     return handleResponse<any>(res);
   },
 

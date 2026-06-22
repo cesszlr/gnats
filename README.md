@@ -21,6 +21,10 @@ GNATS is a modern, lightweight, and powerful open-source management interface de
     - **Multi-Account Selection**: Seamlessly switch between different NATS Accounts to monitor isolated traffic.
     - **Active Client Tracking**: Monitor Top 10 stressed clients with server-side sorting (by pending bytes, sent/received messages).
     - **Real-time Statistics**: Accurate throughput charts (msgs/s) and high-fidelity animations.
+    - **NATS Cluster Topology & Monitoring**:
+        - **Interactive SVG Topology Graph**: Real-time rendering of cluster nodes, routes, and leafnodes with physics simulation (`d3-force`) preventing overlap. Color-coded routes indicating RTT latency. Wiggle-free positioning on data refreshes.
+        - **Node Details & Alert Guidance**: Click a node to slide open its detail drawer displaying CPU, memory, throughput, and slow consumers. Shows actionable configuration instructions (`nats-server -m 8222`) for unmonitored nodes.
+        - **Comprehensive Node Stats Board**: Cards displaying performance metrics (CPU, Memory, Uptime, Connections, Bytes) for all nodes, including unmonitored ones.
 - 🚀 **Core Messaging (Pub/Sub & Request-Reply)**: 
     - Subscribe to subjects in real-time and view incoming messages.
     - Display advanced message details (auto-generated or custom `Reply-To` inbox, NATS headers as tags).
@@ -185,7 +189,7 @@ The fastest way to get started. The image is extremely small as it only contains
 - [x] **Consumer Lifecycle Management**: Graphical creation, detailed configuration, and operation of JetStream Consumers (including Push/Pull auto-detection).
 - [x] **Key History & Rollback**: View historical revisions of KV keys and easily rollback to past versions.
 - [x] **Key-Value Diff Viewer**: Visual side-by-side comparison of historical revisions for Key-Value entries.
-- [ ] **NATS Cluster Multi-dimensional Topology & Monitoring**: Visual cluster topological maps showing RTT, bandwidth, and status of Leafnodes and cluster routes.
+- [x] **NATS Cluster Multi-dimensional Topology & Monitoring**: Visual cluster topological maps showing RTT, bandwidth, and status of Leafnodes and cluster routes.
 - [ ] **Microservices Debugging Panel Enhancement**: Active schema discovery via `$SRV.SCHEMA` and one-click endpoint invocation (API testing) directly in the service panel.
 - [ ] **Payload Editor Syntax Highlighting & Formatting**: Integrated rich text editor with auto-formatting and JSON/YAML validation for messaging publishers.
 - [ ] **KV Store Single Key Lifecycle Management**: Support configuring and previewing expiration/TTL settings for individual Key-Value entries.

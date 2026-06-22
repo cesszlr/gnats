@@ -21,3 +21,18 @@ export const formatRTT = (rtt: string): string => {
   }
   return rtt;
 };
+
+export const formatNumber = (num: number): string => {
+  if (num === undefined || num === null || isNaN(num)) return '-';
+  if (num < 1000) return num.toString();
+  if (num < 1000000) {
+    const k = num / 1000;
+    return k.toFixed(1).replace(/\.0$/, '') + 'k';
+  }
+  if (num < 1000000000) {
+    const m = num / 1000000;
+    return m.toFixed(1).replace(/\.0$/, '') + 'M';
+  }
+  const b = num / 1000000000;
+  return b.toFixed(1).replace(/\.0$/, '') + 'B';
+};

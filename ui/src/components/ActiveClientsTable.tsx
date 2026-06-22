@@ -1,7 +1,7 @@
 import React from 'react';
 import { Server, RefreshCcw } from 'lucide-react';
 import { AnimatedNumber } from './AnimatedNumber';
-import { formatBytes, formatRTT } from '../utils/format';
+import { formatBytes, formatRTT, formatNumber } from '../utils/format';
 
 interface ActiveClientsTableProps {
   stats: any;
@@ -101,10 +101,10 @@ export const ActiveClientsTable: React.FC<ActiveClientsTableProps> = ({
                     </span>
                   )}
                   {clientSort === 'msgs_to' && (
-                    <AnimatedNumber value={c.out_msgs?.toLocaleString() || 0} />
+                    <AnimatedNumber value={formatNumber(c.out_msgs || 0)} />
                   )}
                   {clientSort === 'msgs_from' && (
-                    <AnimatedNumber value={c.in_msgs?.toLocaleString() || 0} />
+                    <AnimatedNumber value={formatNumber(c.in_msgs || 0)} />
                   )}
                 </td>
                 <td style={{ padding: '0.75rem 0.5rem', color: 'var(--text-secondary)' }}>

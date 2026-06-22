@@ -7,7 +7,7 @@ import { ThroughputChart } from '../components/ThroughputChart';
 import { ActiveClientsTable } from '../components/ActiveClientsTable';
 import { ClientDetailsModal } from '../components/ClientDetailsModal';
 import { AnimatedNumber } from '../components/AnimatedNumber';
-import { formatBytes } from '../utils/format';
+import { formatBytes, formatNumber } from '../utils/format';
 
 const Dashboard: React.FC = () => {
   const { activeConnection } = useConnection();
@@ -294,7 +294,7 @@ const Dashboard: React.FC = () => {
                   <div className="stat-item">
                     <div className="stat-label">{t('subscriptions')}</div>
                     <div className="stat-value">
-                      <AnimatedNumber value={acc.num_subscriptions?.toLocaleString()} />
+                      <AnimatedNumber value={formatNumber(acc.num_subscriptions)} />
                     </div>
                   </div>
                   <div className="stat-item">
@@ -309,7 +309,7 @@ const Dashboard: React.FC = () => {
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
                       <span className="stat-label">{t('total_received')}</span>
                       <span className="stat-value">
-                        <AnimatedNumber value={acc.received?.msgs?.toLocaleString() + ' msgs'} />
+                        <AnimatedNumber value={formatNumber(acc.received?.msgs || 0) + ' msgs'} />
                       </span>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -323,7 +323,7 @@ const Dashboard: React.FC = () => {
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
                       <span className="stat-label">{t('total_sent')}</span>
                       <span className="stat-value">
-                        <AnimatedNumber value={acc.sent?.msgs?.toLocaleString() + ' msgs'} />
+                        <AnimatedNumber value={formatNumber(acc.sent?.msgs || 0) + ' msgs'} />
                       </span>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -447,7 +447,7 @@ const Dashboard: React.FC = () => {
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.75rem', background: 'rgba(0,0,0,0.02)', borderRadius: 'var(--radius-sm)' }}>
                     <span style={{ color: 'var(--text-secondary)', fontWeight: '500' }}>{t('api_requests')}</span>
-                    <span style={{ fontWeight: '700' }}>{stats.jetstream.api.total.toLocaleString()}</span>
+                    <span style={{ fontWeight: '700' }}>{formatNumber(stats.jetstream.api.total)}</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.75rem', background: 'rgba(0,0,0,0.02)', borderRadius: 'var(--radius-sm)' }}>
                     <span style={{ color: 'var(--text-secondary)', fontWeight: '500' }}>{t('memory_storage')}</span>

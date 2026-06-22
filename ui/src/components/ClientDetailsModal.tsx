@@ -1,7 +1,7 @@
 import React from 'react';
 import { MapPin, Clock, Activity as Pulse, Hash, TrendingUp, Zap } from 'lucide-react';
 import Modal from './Modal';
-import { formatBytes } from '../utils/format';
+import { formatBytes, formatNumber } from '../utils/format';
 
 interface ClientDetailsModalProps {
   selectedClient: any;
@@ -91,7 +91,7 @@ export const ClientDetailsModal: React.FC<ClientDetailsModalProps> = ({
               <Hash size={14} style={{ opacity: 0.7 }} />
               {t('subscriptions')}
             </div>
-            <div className="stat-value">{selectedClient.subscriptions?.toLocaleString()}</div>
+            <div className="stat-value">{formatNumber(selectedClient.subscriptions)}</div>
           </div>
 
           <div className="stat-item" style={{ gridColumn: 'span 2' }}>
@@ -102,11 +102,11 @@ export const ClientDetailsModal: React.FC<ClientDetailsModalProps> = ({
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
               <div style={{ background: 'rgba(0,0,0,0.02)', padding: '1rem', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(0,0,0,0.03)' }}>
                 <div className="stat-label">{t('msgs_in')}</div>
-                <div className="stat-value" style={{ fontSize: '1.2rem' }}>{selectedClient.in_msgs?.toLocaleString()}</div>
+                <div className="stat-value" style={{ fontSize: '1.2rem' }}>{formatNumber(selectedClient.in_msgs)}</div>
               </div>
               <div style={{ background: 'rgba(0,0,0,0.02)', padding: '1rem', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(0,0,0,0.03)' }}>
                 <div className="stat-label">{t('msgs_out')}</div>
-                <div className="stat-value" style={{ fontSize: '1.2rem' }}>{selectedClient.out_msgs?.toLocaleString()}</div>
+                <div className="stat-value" style={{ fontSize: '1.2rem' }}>{formatNumber(selectedClient.out_msgs)}</div>
               </div>
               <div style={{ background: 'rgba(0,0,0,0.02)', padding: '1rem', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(0,0,0,0.03)' }}>
                 <div className="stat-label">{t('bytes_in')}</div>

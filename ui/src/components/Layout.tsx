@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
-import { LayoutDashboard, Database, HardDrive, Box, Activity, Link as LinkIcon, ChevronDown, Sun, Moon, Languages } from 'lucide-react';
+import { LayoutDashboard, Database, HardDrive, Box, Activity, Link as LinkIcon, ChevronDown, Sun, Moon, Languages, Network } from 'lucide-react';
 import { useConnection } from '../contexts/ConnectionContext';
 import { useTranslation } from 'react-i18next';
 
@@ -50,6 +50,10 @@ const Layout: React.FC = () => {
           <NavLink to="/connections" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
             <LinkIcon size={18} />
             {t('connections')}
+          </NavLink>
+          <NavLink to="/cluster" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+            <Network size={18} />
+            {t('cluster_monitoring') || 'Cluster'}
           </NavLink>
           <NavLink to="/core" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
             <Box size={18} />

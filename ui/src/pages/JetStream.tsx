@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import Modal from '../components/Modal';
 import { useToast } from '../components/Toast';
+import { formatNumber } from '../utils/format';
 
 interface StreamInfo {
   config: {
@@ -821,7 +822,7 @@ const JetStream: React.FC = () => {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', fontSize: '0.85rem' }}>
                 <div style={{ padding: '0.5rem', borderBottom: '1px solid var(--border-color)' }}>
                   <span style={{ color: 'var(--text-secondary)' }}>{t('total_messages')}:</span>
-                  <strong style={{ float: 'right' }}>{viewingStreamDetails.state.messages.toLocaleString()}</strong>
+                  <strong style={{ float: 'right' }}>{formatNumber(viewingStreamDetails.state.messages)}</strong>
                 </div>
                 <div style={{ padding: '0.5rem', borderBottom: '1px solid var(--border-color)' }}>
                   <span style={{ color: 'var(--text-secondary)' }}>{t('total_bytes')}:</span>

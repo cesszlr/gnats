@@ -126,6 +126,8 @@ func (a *API) Routes() chi.Router {
 		r.Get("/connections/{id}/services", a.ListServices)
 		r.Get("/connections/{id}/stats", a.GetStats)
 		r.Get("/connections/{id}/monitoring/connections", a.GetMonitoringConnections)
+		r.Get("/connections/{id}/monitoring/cluster", a.GetClusterTopology)
+		r.Get("/connections/{id}/monitoring/nodes", a.GetClusterNodesStats)
 	})
 
 	return r

@@ -12,6 +12,7 @@ const KV = lazy(() => import('./pages/KV'));
 const ObjectStore = lazy(() => import('./pages/ObjectStore'));
 const Services = lazy(() => import('./pages/Services'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
+const Cluster = lazy(() => import('./pages/Cluster'));
 
 const LoadingFallback = () => (
   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', opacity: 0.5 }}>
@@ -29,6 +30,7 @@ function App() {
               <Route element={<Layout />}>
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/connections" element={<Connections />} />
+                <Route path="/cluster" element={<Cluster />} />
                 <Route path="/core" element={<Core />} />
                 <Route path="/jetstream" element={<JetStream />} />
                 <Route path="/kv" element={<KV />} />

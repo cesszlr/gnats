@@ -3,10 +3,12 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"net/url"
 	"sort"
 	"strings"
+	"sync"
 
 	internalnats "gnats/internal/nats"
 
@@ -189,4 +191,179 @@ func (a *API) GetMonitoringConnections(w http.ResponseWriter, r *http.Request) {
 	} else {
 		a.sendError(w, err.Error(), http.StatusInternalServerError)
 	}
+}
+
+func (a *API) GetClusterTopology(w http.ResponseWriter, r *http.Request) {
+	client := a.getClient(r)
+
+	monitorURL := client.Config.MonitoringURL
+	if monitorURL == "" {
+		if u, err := url.Parse(client.Config.URL); err == nil {
+			host := u.Hostname()
+			if host == "" {
+				host = "localhost"
+			}
+			monitorURL = fmt.Sprintf("http://%s:8222", host)
+		}
+	}
+
+	if monitorURL == "" {
+		a.sendError(w, "monitoring url could not be determined", http.StatusBadRequest)
+		return
+	}
+
+	baseURL := strings.TrimSuffix(monitorURL, "/")
+
+	var varzData struct {
+		ServerID    string      `json:"server_id"`
+		ServerName  string      `json:"server_name"`
+		ClusterName interface{} `json:"cluster"`
+	}
+	var routezData struct {
+		Routes []map[string]interface{} `json:"routes"`
+	}
+	var leafzData struct {
+		Leafs []map[string]interface{} `json:"leafs"`
+	}
+
+	_ = fetchJSON(baseURL+"/varz", &varzData)
+	_ = fetchJSON(baseURL+"/routez", &routezData)
+	_ = fetchJSON(baseURL+"/leafz", &leafzData)
+
+	clusterName := ""
+	if varzData.ClusterName != nil {
+		if str, ok := varzData.ClusterName.(string); ok {
+			clusterName = str
+		} else if m, ok := varzData.ClusterName.(map[string]interface{}); ok {
+			if name, ok := m["name"].(string); ok {
+				clusterName = name
+			}
+		}
+	}
+
+	result := map[string]interface{}{
+		"server_id":    varzData.ServerID,
+		"server_name":  varzData.ServerName,
+		"cluster_name": clusterName,
+		"routes":       routezData.Routes,
+		"leafnodes":    leafzData.Leafs,
+	}
+
+	a.sendJSON(w, result)
+}
+
+func (a *API) GetClusterNodesStats(w http.ResponseWriter, r *http.Request) {
+	client := a.getClient(r)
+
+	monitorURL := client.Config.MonitoringURL
+	if monitorURL == "" {
+		if u, err := url.Parse(client.Config.URL); err == nil {
+			host := u.Hostname()
+			if host == "" {
+				host = "localhost"
+			}
+			monitorURL = fmt.Sprintf("http://%s:8222", host)
+		}
+	}
+
+	if monitorURL == "" {
+		a.sendError(w, "monitoring url could not be determined", http.StatusBadRequest)
+		return
+	}
+
+	baseURL := strings.TrimSuffix(monitorURL, "/")
+
+	var localVarz map[string]interface{}
+	if err := fetchJSON(baseURL+"/varz", &localVarz); err != nil {
+		a.sendError(w, "failed to fetch local varz: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	var routezData struct {
+		Routes []map[string]interface{} `json:"routes"`
+	}
+	_ = fetchJSON(baseURL+"/routez", &routezData)
+
+	port := "8222"
+	if u, err := url.Parse(monitorURL); err == nil && u.Port() != "" {
+		port = u.Port()
+	}
+
+	type nodeJob struct {
+		name string
+		url  string
+	}
+	var jobs []nodeJob
+	jobs = append(jobs, nodeJob{name: "local", url: baseURL + "/varz"})
+
+	seenIPs := make(map[string]bool)
+	if u, err := url.Parse(baseURL); err == nil {
+		if host := u.Hostname(); host != "" {
+			seenIPs[host] = true
+		}
+	}
+
+	for _, route := range routezData.Routes {
+		if ip, ok := route["ip"].(string); ok && ip != "" {
+			if seenIPs[ip] {
+				continue
+			}
+			seenIPs[ip] = true
+			jobs = append(jobs, nodeJob{
+				name: ip,
+				url:  fmt.Sprintf("http://%s:%s/varz", ip, port),
+			})
+		}
+	}
+
+	type nodeResult struct {
+		url  string
+		data map[string]interface{}
+		err  error
+	}
+
+	resultsChan := make(chan nodeResult, len(jobs))
+	var wg sync.WaitGroup
+
+	for _, job := range jobs {
+		wg.Add(1)
+		go func(j nodeJob) {
+			defer wg.Done()
+			var data map[string]interface{}
+			err := fetchJSON(j.url, &data)
+			resultsChan <- nodeResult{url: j.url, data: data, err: err}
+		}(job)
+	}
+
+	wg.Wait()
+	close(resultsChan)
+
+	var nodes []map[string]interface{}
+	seenNodes := make(map[string]bool)
+	for res := range resultsChan {
+		if res.err == nil && res.data != nil {
+			sID, _ := res.data["server_id"].(string)
+			if sID != "" {
+				if seenNodes[sID] {
+					continue
+				}
+				seenNodes[sID] = true
+			}
+			nodes = append(nodes, res.data)
+		} else {
+			log.Printf("failed to fetch cluster node stats from %s: %v", res.url, res.err)
+		}
+	}
+
+	if len(nodes) == 0 && localVarz != nil {
+		nodes = append(nodes, localVarz)
+	}
+
+	sort.Slice(nodes, func(i, j int) bool {
+		nameI, _ := nodes[i]["server_name"].(string)
+		nameJ, _ := nodes[j]["server_name"].(string)
+		return nameI < nameJ
+	})
+
+	a.sendJSON(w, map[string]interface{}{"nodes": nodes})
 }
