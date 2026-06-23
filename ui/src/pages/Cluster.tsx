@@ -349,7 +349,7 @@ const Cluster: React.FC = () => {
 
     const formatServerId = (id: string) => {
       if (!id) return '';
-      return id.length > 16 ? `${id.substring(0, 8)}...${id.slice(-8)}` : id;
+      return id.length > 16 ? `${id.substring(0, 6)}...${id.slice(-6)}` : id;
     };
 
     return (
@@ -387,7 +387,7 @@ const Cluster: React.FC = () => {
                      <span 
                       className="custom-tooltip" 
                       data-tooltip={node.server_id} 
-                      style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontFamily: 'monospace', cursor: 'help', display: 'inline-block' }}
+                      style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontFamily: 'monospace', cursor: 'help', display: 'inline-block', whiteSpace: 'nowrap' }}
                      >
                        ID: {formatServerId(node.server_id)}
                      </span>
@@ -443,7 +443,7 @@ const Cluster: React.FC = () => {
                   <span 
                     className="custom-tooltip" 
                     data-tooltip={node.server_id} 
-                    style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontFamily: 'monospace', cursor: 'help', display: 'inline-block' }}
+                    style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontFamily: 'monospace', cursor: 'help', display: 'inline-block', whiteSpace: 'nowrap' }}
                   >
                     ID: {formatServerId(node.server_id)}
                   </span>

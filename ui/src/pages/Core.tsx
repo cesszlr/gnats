@@ -1,8 +1,12 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useConnection } from '../contexts/ConnectionContext';
 import { Send, Play, Square, MessageSquare, Zap, Clock, Terminal, ChevronDown, ChevronUp } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { apiClient } from '../api/client';
+import CodeMirror from '@uiw/react-codemirror';
+import { json } from '@codemirror/lang-json';
+import { yaml } from '@codemirror/lang-yaml';
+import { vscodeDark, vscodeLight } from '@uiw/codemirror-theme-vscode';
 
 interface Message {
   subject: string;
@@ -12,8 +16,17 @@ interface Message {
   timestamp: string;
 }
 
+interface ResponseData {
+  success: boolean;
+  subject?: string;
+  data?: string;
+  headers?: Record<string, string[]>;
+  latency_ms?: number;
+  error?: string;
+}
+
 const Core: React.FC = () => {
-  const { activeConnection } = useConnection();
+  const { activeConnection, theme } = useConnection();
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<'pubsub' | 'request'>('pubsub');
 
@@ -39,21 +52,158 @@ const Core: React.FC = () => {
   const [reqHeaders, setReqHeaders] = useState('');
   const [reqTimeout, setReqTimeout] = useState('5000');
   const [reqLoading, setReqLoading] = useState(false);
-  const [response, setResponse] = useState<any>(null);
+  const [response, setResponse] = useState<ResponseData | null>(null);
   const [responseFormat, setResponseFormat] = useState<'raw' | 'json'>('raw');
   const [showReqAdvanced, setShowReqAdvanced] = useState(false);
   const [customReplyTo, setCustomReplyTo] = useState('');
   const abortControllerRef = useRef<AbortController | null>(null);
 
+  // Format & Validation States
+  const [pubFormat, setPubFormat] = useState<'raw' | 'json' | 'yaml'>('raw');
+  const [pubError, setPubError] = useState<string | null>(null);
+  const [reqFormat, setReqFormat] = useState<'raw' | 'json' | 'yaml'>('raw');
+  const [reqError, setReqError] = useState<string | null>(null);
+
+  const cmTheme = useMemo(() => {
+    if (theme === 'dark') return vscodeDark;
+    if (theme === 'light') return vscodeLight;
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? vscodeDark : vscodeLight;
+  }, [theme]);
+
+  const validatePayload = (value: string, format: 'raw' | 'json' | 'yaml'): string | null => {
+    if (!value.trim()) return null;
+    if (format === 'raw') return null;
+    if (format === 'json') {
+      try {
+        JSON.parse(value);
+        return null;
+      } catch (err) {
+        return err instanceof Error ? err.message : 'Invalid JSON';
+      }
+    }
+    if (format === 'yaml') {
+      if (/\t/.test(value)) {
+        return 'Tab characters are not allowed for indentation in YAML. Please use spaces.';
+      }
+      try {
+        const lines = value.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i];
+          const trimmed = line.trim();
+          if (!trimmed || trimmed.startsWith('#')) continue;
+          
+          if (trimmed.startsWith('-')) continue;
+          if (trimmed.includes(':')) {
+            const parts = trimmed.split(':');
+            const key = parts[0].trim();
+            if (!key) {
+              return `Line ${i + 1}: Key cannot be empty before colon`;
+            }
+            if (/\s/.test(key) && !(/^['"].*['"]$/.test(key))) {
+              return `Line ${i + 1}: Key '${key}' contains spaces and must be quoted`;
+            }
+          }
+        }
+        return null;
+      } catch (err) {
+        return err instanceof Error ? err.message : 'Invalid YAML';
+      }
+    }
+    return null;
+  };
+
+  const handlePubDataChange = (val: string) => {
+    setPubData(val);
+    setPubError(validatePayload(val, pubFormat));
+  };
+
+  const handlePubFormatChange = (format: 'raw' | 'json' | 'yaml') => {
+    setPubFormat(format);
+    setPubError(validatePayload(pubData, format));
+  };
+
+  const handleReqDataChange = (val: string) => {
+    setReqData(val);
+    setReqError(validatePayload(val, reqFormat));
+  };
+
+  const handleReqFormatChange = (format: 'raw' | 'json' | 'yaml') => {
+    setReqFormat(format);
+    setReqError(validatePayload(reqData, format));
+  };
+
+  const handleFormat = (type: 'pub' | 'req') => {
+    const isPub = type === 'pub';
+    const data = isPub ? pubData : reqData;
+    const format = isPub ? pubFormat : reqFormat;
+    const setData = isPub ? setPubData : setReqData;
+    const setError = isPub ? setPubError : setReqError;
+
+    if (!data.trim()) return;
+
+    if (format === 'json') {
+      try {
+        const parsed = JSON.parse(data);
+        const formatted = JSON.stringify(parsed, null, 2);
+        setData(formatted);
+        setError(null);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Invalid JSON');
+      }
+    } else if (format === 'yaml') {
+      try {
+        const parsed = JSON.parse(data);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const toYaml = (val: any, indent = 0): string => {
+          if (val === null) return 'null';
+          if (typeof val !== 'object') {
+            if (typeof val === 'string') return `"${val.replace(/"/g, '\\"')}"`;
+            return String(val);
+          }
+          const spaces = '  '.repeat(indent);
+          if (Array.isArray(val)) {
+            if (val.length === 0) return '[]';
+            return val.map(item => {
+              if (typeof item === 'object' && item !== null) {
+                return `\n${spaces}- ${toYaml(item, indent + 1).trimStart()}`;
+              }
+              return `\n${spaces}- ${toYaml(item, indent)}`;
+            }).join('');
+          }
+          return Object.entries(val).map(([k, v]) => {
+            if (typeof v === 'object' && v !== null) {
+              const formattedVal = toYaml(v, indent + 1);
+              const prefix = Array.isArray(v) ? '' : '\n';
+              return `\n${spaces}${k}:${prefix}${formattedVal}`;
+            }
+            return `\n${spaces}${k}: ${toYaml(v, indent)}`;
+          }).join('');
+        };
+        const formatted = toYaml(parsed).trim();
+        setData(formatted);
+        setError(null);
+      } catch {
+        const cleaned = data.split('\n').map(line => line.trimEnd()).join('\n').trim();
+        setData(cleaned);
+        setError(validatePayload(cleaned, 'yaml'));
+      }
+    }
+  };
+
   const handlePublish = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!activeConnection) return;
+
+    if (pubFormat !== 'raw' && pubError) {
+      alert(t('invalid_' + pubFormat, { error: pubError }) || `Invalid ${pubFormat} payload`);
+      return;
+    }
     
     let headers = {};
     if (pubHeaders) {
       try {
         headers = JSON.parse(pubHeaders);
-      } catch (err) {
+      } catch {
         alert('Invalid headers JSON');
         return;
       }
@@ -112,6 +262,12 @@ const Core: React.FC = () => {
   const handleRequest = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!activeConnection) return;
+
+    if (reqFormat !== 'raw' && reqError) {
+      alert(t('invalid_' + reqFormat, { error: reqError }) || `Invalid ${reqFormat} payload`);
+      return;
+    }
+
     setReqLoading(true);
     setResponse(null);
 
@@ -119,7 +275,7 @@ const Core: React.FC = () => {
     if (reqHeaders) {
       try {
         headers = JSON.parse(reqHeaders);
-      } catch (err) {
+      } catch {
         alert('Invalid headers JSON');
         setReqLoading(false);
         return;
@@ -143,8 +299,8 @@ const Core: React.FC = () => {
         headers: res.headers,
         latency_ms: res.latency_ms
       });
-    } catch (err: any) {
-      if (err.name === 'AbortError') {
+    } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') {
         setResponse({
           success: false,
           error: t('request_cancelled') || 'Request cancelled'
@@ -153,7 +309,7 @@ const Core: React.FC = () => {
       }
       setResponse({
         success: false,
-        error: err.toString() || 'Request failed'
+        error: String(err) || 'Request failed'
       });
     } finally {
       setReqLoading(false);
@@ -175,7 +331,7 @@ const Core: React.FC = () => {
       try {
         const parsed = JSON.parse(data);
         return JSON.stringify(parsed, null, 2);
-      } catch (err) {
+      } catch {
         return data;
       }
     }
@@ -223,8 +379,82 @@ const Core: React.FC = () => {
                 <input className="input" value={pubHeaders} onChange={e => setPubHeaders(e.target.value)} placeholder='e.g. {"Content-Type": "application/json"}' />
               </div>
               <div className="form-group">
-                <label className="form-label">{t('payload')}</label>
-                <textarea className="input" style={{ height: '120px', fontFamily: 'monospace' }} value={pubData} onChange={e => setPubData(e.target.value)} />
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                  <label className="form-label" style={{ margin: 0 }}>{t('payload')}</label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <div className="btn-group" style={{ background: 'rgba(0,0,0,0.03)', padding: '0.1rem', borderRadius: 'var(--radius-sm)', display: 'flex' }}>
+                      <button 
+                        type="button" 
+                        className={`btn ${pubFormat === 'raw' ? 'active' : ''}`}
+                        style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem', border: 'none' }}
+                        onClick={() => handlePubFormatChange('raw')}
+                      >
+                        {t('raw_text')}
+                      </button>
+                      <button 
+                        type="button" 
+                        className={`btn ${pubFormat === 'json' ? 'active' : ''}`}
+                        style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem', border: 'none' }}
+                        onClick={() => handlePubFormatChange('json')}
+                      >
+                        JSON
+                      </button>
+                      <button 
+                        type="button" 
+                        className={`btn ${pubFormat === 'yaml' ? 'active' : ''}`}
+                        style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem', border: 'none' }}
+                        onClick={() => handlePubFormatChange('yaml')}
+                      >
+                        YAML
+                      </button>
+                    </div>
+                    {pubFormat !== 'raw' && (
+                      <button
+                        type="button"
+                        className="btn btn-secondary"
+                        style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem', height: 'auto', display: 'flex', alignItems: 'center' }}
+                        onClick={() => handleFormat('pub')}
+                      >
+                        {t('format_payload')}
+                      </button>
+                    )}
+                  </div>
+                </div>
+                
+                <div style={{ border: '1px solid var(--border-color)', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
+                  <CodeMirror
+                    value={pubData}
+                    height="150px"
+                    theme={cmTheme}
+                    extensions={pubFormat === 'json' ? [json()] : pubFormat === 'yaml' ? [yaml()] : []}
+                    onChange={handlePubDataChange}
+                  />
+                </div>
+
+                {pubFormat !== 'raw' && pubData.trim() && (
+                  <div style={{ 
+                    marginTop: '0.5rem', 
+                    fontSize: '0.75rem', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '0.35rem',
+                    padding: '0.35rem 0.6rem',
+                    borderRadius: 'var(--radius-sm)',
+                    background: pubError ? 'rgba(239, 68, 68, 0.08)' : 'rgba(16, 185, 129, 0.08)',
+                    color: pubError ? 'var(--error-color)' : 'var(--success-color)',
+                    border: pubError ? '1px solid rgba(239, 68, 68, 0.15)' : '1px solid rgba(16, 185, 129, 0.15)',
+                    transition: 'all 0.2s ease'
+                  }}>
+                    <span style={{ 
+                      width: '6px', 
+                      height: '6px', 
+                      borderRadius: '50%', 
+                      background: pubError ? 'var(--error-color)' : 'var(--success-color)',
+                      display: 'inline-block'
+                    }} />
+                    {pubError ? t('invalid_' + pubFormat, { error: pubError }) : t('valid_' + pubFormat)}
+                  </div>
+                )}
               </div>
               <button type="submit" className="btn btn-primary">{t('publish')}</button>
             </form>
@@ -377,8 +607,82 @@ const Core: React.FC = () => {
                 </div>
               </div>
               <div className="form-group">
-                <label className="form-label">{t('payload')}</label>
-                <textarea className="input" style={{ height: '120px', fontFamily: 'monospace' }} value={reqData} onChange={e => setReqData(e.target.value)} />
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                  <label className="form-label" style={{ margin: 0 }}>{t('payload')}</label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <div className="btn-group" style={{ background: 'rgba(0,0,0,0.03)', padding: '0.1rem', borderRadius: 'var(--radius-sm)', display: 'flex' }}>
+                      <button 
+                        type="button" 
+                        className={`btn ${reqFormat === 'raw' ? 'active' : ''}`}
+                        style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem', border: 'none' }}
+                        onClick={() => handleReqFormatChange('raw')}
+                      >
+                        {t('raw_text')}
+                      </button>
+                      <button 
+                        type="button" 
+                        className={`btn ${reqFormat === 'json' ? 'active' : ''}`}
+                        style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem', border: 'none' }}
+                        onClick={() => handleReqFormatChange('json')}
+                      >
+                        JSON
+                      </button>
+                      <button 
+                        type="button" 
+                        className={`btn ${reqFormat === 'yaml' ? 'active' : ''}`}
+                        style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem', border: 'none' }}
+                        onClick={() => handleReqFormatChange('yaml')}
+                      >
+                        YAML
+                      </button>
+                    </div>
+                    {reqFormat !== 'raw' && (
+                      <button
+                        type="button"
+                        className="btn btn-secondary"
+                        style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem', height: 'auto', display: 'flex', alignItems: 'center' }}
+                        onClick={() => handleFormat('req')}
+                      >
+                        {t('format_payload')}
+                      </button>
+                    )}
+                  </div>
+                </div>
+                
+                <div style={{ border: '1px solid var(--border-color)', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
+                  <CodeMirror
+                    value={reqData}
+                    height="150px"
+                    theme={cmTheme}
+                    extensions={reqFormat === 'json' ? [json()] : reqFormat === 'yaml' ? [yaml()] : []}
+                    onChange={handleReqDataChange}
+                  />
+                </div>
+
+                {reqFormat !== 'raw' && reqData.trim() && (
+                  <div style={{ 
+                    marginTop: '0.5rem', 
+                    fontSize: '0.75rem', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '0.35rem',
+                    padding: '0.35rem 0.6rem',
+                    borderRadius: 'var(--radius-sm)',
+                    background: reqError ? 'rgba(239, 68, 68, 0.08)' : 'rgba(16, 185, 129, 0.08)',
+                    color: reqError ? 'var(--error-color)' : 'var(--success-color)',
+                    border: reqError ? '1px solid rgba(239, 68, 68, 0.15)' : '1px solid rgba(16, 185, 129, 0.15)',
+                    transition: 'all 0.2s ease'
+                  }}>
+                    <span style={{ 
+                      width: '6px', 
+                      height: '6px', 
+                      borderRadius: '50%', 
+                      background: reqError ? 'var(--error-color)' : 'var(--success-color)',
+                      display: 'inline-block'
+                    }} />
+                    {reqError ? t('invalid_' + reqFormat, { error: reqError }) : t('valid_' + reqFormat)}
+                  </div>
+                )}
               </div>
               <button type="submit" className="btn btn-primary" disabled={reqLoading}>
                 {reqLoading ? t('loading') : t('send_request')}
@@ -451,7 +755,7 @@ const Core: React.FC = () => {
                     </div>
                     <div className="stat-item" style={{ padding: '0.5rem 0.75rem' }}>
                       <div className="stat-label">{t('latency')}</div>
-                      <div className="stat-value" style={{ fontSize: '0.9rem' }}>{response.latency_ms.toFixed(2)} ms</div>
+                      <div className="stat-value" style={{ fontSize: '0.9rem' }}>{response.latency_ms?.toFixed(2) ?? '0.00'} ms</div>
                     </div>
                   </div>
 
@@ -459,7 +763,7 @@ const Core: React.FC = () => {
                     <div style={{ border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', padding: '0.75rem', background: 'rgba(0,0,0,0.01)' }}>
                       <div style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>{t('headers')}</div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                        {Object.entries(response.headers).map(([k, v]: any) => (
+                        {Object.entries(response.headers).map(([k, v]) => (
                           <div key={k} style={{ display: 'flex', fontSize: '0.8rem' }}>
                             <span style={{ fontWeight: '600', color: 'var(--text-secondary)', minWidth: '120px' }}>{k}:</span>
                             <span style={{ color: 'var(--text-primary)', fontFamily: 'monospace' }}>{v}</span>
@@ -472,7 +776,7 @@ const Core: React.FC = () => {
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
                     <div style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>{t('payload')}</div>
                     <pre className="code-block" style={{ flex: 1, margin: 0, padding: '1rem', overflow: 'auto', maxHeight: '300px', fontSize: '0.8125rem' }}>
-                      {renderFormattedResponse(response.data)}
+                      {renderFormattedResponse(response.data || '')}
                     </pre>
                   </div>
                 </div>
