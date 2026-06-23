@@ -197,7 +197,6 @@ The fastest way to get started. The image is extremely small as it only contains
 - [x] **NATS Cluster Multi-dimensional Topology & Monitoring**: Visual cluster topological maps showing RTT, bandwidth, and status of Leafnodes and cluster routes.
 - [x] **Microservices Debugging Panel**: One-click endpoint invocation (API testing console) directly in the service panel, featuring JSON/YAML payload editors, custom timeout, headers configuration, and latency metrics.
 - [x] **Payload Editor Syntax Highlighting & Formatting**: Integrated rich text editor with auto-formatting and JSON/YAML validation for messaging publishers.
-- [ ] **KV Store Single Key Lifecycle Management**: Support configuring and previewing expiration/TTL settings for individual Key-Value entries.
 
 ---
 
