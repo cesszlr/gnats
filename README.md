@@ -51,6 +51,7 @@ GNATS is a modern, lightweight, and powerful open-source management interface de
     - Automatically discover and display services built with the NATS Micro framework.
     - **Enhanced Metadata Visibility**: Metadata tags are rendered directly on the service cards.
     - **Dual Detail Foldout Panels**: Asynchronously fetch `$SRV.INFO` and `$SRV.STATS` to display endpoints, endpoint metadata, descriptions, start times, average latency, request volume, error counts, and recent error stacks in an elegant panel with smooth custom hover tooltips.
+    - **Integrated Endpoint API Test Console (Debugging Panel)**: Dedicated debugging Modal for each microservice endpoint. Supports JSON/YAML syntax validation, custom timeout, headers (metadata) injection, latency calculation, and active request abortion.
 - 📦 **Single Binary Distribution**: Frontend assets are embedded directly into the Go binary for zero-dependency deployment.
 - 🌓 **Premium Experience**:
     - **Dark/Light Mode** automatic switching.
@@ -194,7 +195,7 @@ The fastest way to get started. The image is extremely small as it only contains
 - [x] **Key History & Rollback**: View historical revisions of KV keys and easily rollback to past versions.
 - [x] **Key-Value Diff Viewer**: Visual side-by-side comparison of historical revisions for Key-Value entries.
 - [x] **NATS Cluster Multi-dimensional Topology & Monitoring**: Visual cluster topological maps showing RTT, bandwidth, and status of Leafnodes and cluster routes.
-- [ ] **Microservices Debugging Panel Enhancement**: Active schema discovery via `$SRV.SCHEMA` and one-click endpoint invocation (API testing) directly in the service panel.
+- [x] **Microservices Debugging Panel**: One-click endpoint invocation (API testing console) directly in the service panel, featuring JSON/YAML payload editors, custom timeout, headers configuration, and latency metrics.
 - [x] **Payload Editor Syntax Highlighting & Formatting**: Integrated rich text editor with auto-formatting and JSON/YAML validation for messaging publishers.
 - [ ] **KV Store Single Key Lifecycle Management**: Support configuring and previewing expiration/TTL settings for individual Key-Value entries.
 
