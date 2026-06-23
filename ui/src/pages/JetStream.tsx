@@ -948,7 +948,7 @@ const JetStream: React.FC = () => {
                   <span>{t('storage')}: {s.config.storage === 'file' ? 'File' : 'Memory'}</span>
                   <span>{t('retention')}: {s.config.retention}</span>
                   <span>{t('consumers')}: {s.state.consumer_count}</span>
-                  {s.cluster && <span>Cluster: {s.cluster.name} ({s.cluster.leader})</span>}
+                  {s.cluster && <span>Cluster: {s.cluster.name} ({t('leader')}: {s.cluster.leader})</span>}
                 </div>
                 
                 {viewingConsumers === s.config.name && (
